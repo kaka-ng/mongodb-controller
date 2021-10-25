@@ -1,0 +1,63 @@
+{
+  "name": "@kakang/mongodb-controller",
+  "version": "0.0.0",
+  "description": "",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./lib/mjs/index.js",
+      "require": "./lib/index.js"
+    }
+  },
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "clean": "npx rimraf \"lib/**/*.js\" \"lib/**/*.map\" \"lib/**/*.d.ts\" \"test/**/*.js\" \"test/**/*.map\" \"test/**/*.d.ts\"",
+    "lint": "eslint --ext .ts lib test",
+    "lint:fix": "npm run lint -- --fix",
+    "build": "rollup -c",
+    "build:tsc": "tsc -b",
+    "unit": "tap",
+    "test": "npm run lint && npm run unit",
+    "coverage": "tap --coverage --coverage-report=lcovonly",
+    "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kaka-repo/mongodb-controller.git"
+  },
+  "author": "KaKa",
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^8.3.0",
+    "@types/jest": "^27.0.2",
+    "@types/tap": "^15.0.5",
+    "@types/uuid": "^8.3.1",
+    "@typescript-eslint/eslint-plugin": "^4.0.1",
+    "eslint": "^7.12.1",
+    "eslint-config-standard-with-typescript": "^21.0.1",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^5.0.0",
+    "mongodb": "^4.1.3",
+    "mongodb-memory-server": "^7.5.1",
+    "prettier": "^2.4.1",
+    "rollup": "^2.58.1",
+    "tap": "^15.0.10",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.4.4"
+  },
+  "dependencies": {
+    "@kakang/eventemitter": "^0.1.0",
+    "@kakang/mongodb-aggregate-builder": "^0.1.0",
+    "@kakang/validator": "^0.1.0",
+    "pino": "^7.0.3",
+    "uuid": "^8.3.2"
+  }
+}

@@ -1,0 +1,8 @@
+export const kCollection = Symbol.for('collection')
+export const kCreateIndex = Symbol.for('createIndex')
+export const kAppendBasicSchema = Symbol.for('appendBasicSchema')
+export const kAppendUpdatedSchema = Symbol.for('appendUpdatedSchema')
+export const kAddHooks = Symbol.for('addHooks')
+export const kNormalizeAtomicUpdate = Symbol.for('normailzeAtomicUpdate')
+export const kNormalizeFilter = Symbol.for('normalizeFilter')
+export const kTransformRegExpSearch = Symbol.for('transformRegExpSearch')
