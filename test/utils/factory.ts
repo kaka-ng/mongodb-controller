@@ -14,7 +14,7 @@ export async function build (t: any): Promise<Db> {
     // main reason is mongodb is still processing data
     await sleep(500)
     await connection.close()
-    await o.mongodb.stop(true)
+    await o.mongodb.stop()
   })
 
   return db
