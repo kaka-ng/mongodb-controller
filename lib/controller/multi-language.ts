@@ -1,7 +1,7 @@
 import AggregateBuilder, { MatchPipeline } from '@kakang/mongodb-aggregate-builder'
 import * as Validator from '@kakang/validator'
 import { Collection, Document, Filter, FindOptions } from 'mongodb'
-import { kCreateIndex, kNormalizeFilter, kTransformRegExpSearch } from '../constant'
+import { kCreateIndex, kFindNextPair, kNormalizeFilter, kTransformRegExpSearch } from '../constant'
 import { Controller, ControllerOptions } from './default'
 
 export interface MultiLanguageControllerOptions extends ControllerOptions {
@@ -72,11 +72,11 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
     }
     if (typeof filter === 'string') {
       if (!filter.endsWith(',')) filter = filter + ','
-      let found = this.filterRegExp.exec(filter)
-      while (found !== null) {
-        const [, key, value] = found
-        arr.push({ [`items.${key}`]: normalize(value) })
-        found = this.filterRegExp.exec(filter)
+      for (let i = 0; i <= filter.length; i++) {
+        const { endIndex, key, value } = this[kFindNextPair](filter, i)
+        if (key === '' && value === '') break
+        arr.push({ [key]: normalize(value) })
+        i = endIndex - 1
       }
     }
     if (arr.length > 0) {
