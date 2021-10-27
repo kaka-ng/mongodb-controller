@@ -75,7 +75,7 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
       for (let i = 0; i <= filter.length; i++) {
         const { endIndex, key, value } = this[kFindNextPair](filter, i)
         if (key === '' && value === '') break
-        arr.push({ [key]: normalize(value) })
+        arr.push({ [`items.${key}`]: normalize(value) })
         i = endIndex - 1
       }
     }
