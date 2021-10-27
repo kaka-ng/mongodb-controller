@@ -5,14 +5,13 @@ import * as Validator from '@kakang/validator'
 import { BulkWriteOptions, Collection, DeleteOptions, Document, Filter, FindOptions, InsertOneOptions, OptionalId, UpdateFilter, UpdateOptions } from 'mongodb'
 import { P } from 'pino'
 import * as uuid from 'uuid'
-import { kAppendBasicSchema, kAppendUpdatedSchema, kCollection, kCreateIndex, kNormalizeFilter, kTransformRegExpSearch } from '../constant'
+import { kAppendBasicSchema, kAppendUpdatedSchema, kCollection, kCreateIndex, kFindNextPair, kNormalizeFilter, kTransformRegExpSearch } from '../constant'
 import { createLogger } from '../logger'
 import { isUpdateQuery, OptionalBasicSchema } from '../util'
 
 export interface ControllerOptions {
   logger?: P.LoggerOptions | P.BaseLogger
   searchFields?: string[]
-  filterRegExp?: RegExp
   autoRegExpSearch?: boolean
   buildAggregateBuilder?: () => AggregateBuilder
 }
@@ -22,7 +21,6 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
   collectionName: string
   logger: P.BaseLogger
   searchFields: string[]
-  filterRegExp: RegExp
   autoRegExpSearch: boolean
 
   get collection (): Collection<TSchema> {
@@ -40,7 +38,6 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     this.collectionName = this.collection.collectionName
     this.logger = createLogger(this.collectionName, options?.logger)
     this.searchFields = options?.searchFields ?? []
-    this.filterRegExp = options?.filterRegExp ?? /([a-zA-Z0-9.$]+):([a-zA-Z0-9-\u3000\u3400-\u4DBF\u4E00-\u9FFF.]+|{.+}),/g
     this.autoRegExpSearch = options?.autoRegExpSearch ?? false
     this[kCreateIndex]()
     void this.createIndex()
@@ -150,6 +147,43 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
       return { $regex: text, $options: 'i' }
     } else {
       return text
+    }
+  }
+
+  [kFindNextPair] (text: string, startIndex = 0): { startIndex: number, endIndex: number, key: string, value: string } {
+    const start = ['{', '[']
+    const end = ['}', ']']
+    const allowedKey = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.$'
+    const delimiter = [':', ',']
+    let key = ''
+    let value = ''
+    let endIndex = 0
+    let foundKey = false
+    let nested = 0
+
+    for (let i = startIndex; i < text.length; i++) {
+      const char = text[i]
+      if (!foundKey) {
+        // looking for key
+        if (allowedKey.includes(char)) key += char
+        else if (char === delimiter[0]) foundKey = true
+      } else {
+        // looking for value
+        if (start.includes(char)) nested++
+        if (end.includes(char)) nested--
+        if (nested === 0 && char === delimiter[1]) {
+          endIndex = i + 1
+          break
+        }
+        value += char
+      }
+    }
+
+    return {
+      startIndex,
+      endIndex,
+      key,
+      value
     }
   }
 
@@ -325,11 +359,11 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     }
     if (typeof filter === 'string') {
       if (!filter.endsWith(',')) filter = filter + ','
-      let found = this.filterRegExp.exec(filter)
-      while (found !== null) {
-        const [, key, value] = found
+      for (let i = 0; i <= filter.length; i++) {
+        const { endIndex, key, value } = this[kFindNextPair](filter, i)
+        if (key === '' && value === '') break
         arr.push({ [key]: normalize(value) })
-        found = this.filterRegExp.exec(filter)
+        i = endIndex - 1
       }
     }
     if (arr.length > 0) {
