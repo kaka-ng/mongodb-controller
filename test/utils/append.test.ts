@@ -45,7 +45,7 @@ t.test('pass update query to appendUpdateSchema', function (t) {
   const result = appendUpdateSchema({ $push: { foo: 'bar' } })
   t.same(result.$push, { foo: 'bar' }, 'should have original props')
   t.equal('$set' in result, true, 'should have $set')
-  const set = result.$set as any
+  const set = (result as any).$set
   t.equal('id' in set, false, 'should not add "id"')
   t.equal('createdAt' in set, false, 'should not add "createdAt"')
   t.equal('updatedAt' in set, true, 'should add "updatedAt"')
