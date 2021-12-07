@@ -330,4 +330,13 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
   buildAggregateBuilder (..._args: any[]): AggregateBuilder {
     return new AggregateBuilder()
   }
+
+  async resetDatabase (): Promise<boolean> {
+    this.logger.trace({ func: 'resetDatabase' })
+    await this.emit('pre-reset')
+    await this.collection.drop()
+    await this[kCreateIndex]()
+    await this.emit('post-reset')
+    return true
+  }
 }
