@@ -1,6 +1,6 @@
 import AggregateBuilder from '@kakang/mongodb-aggregate-builder'
 import { isEmpty, isExist } from '@kakang/validator'
-import { Collection, Filter, FindOptions, UpdateFilter, UpdateOptions } from 'mongodb'
+import { Collection, Document, Filter, FindOptions, UpdateFilter, UpdateOptions } from 'mongodb'
 import { retrieveUpdateQueryData } from '../utils/query'
 import { Controller, ControllerOptions } from './default'
 

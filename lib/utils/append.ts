@@ -1,5 +1,5 @@
 import { isArray } from '@kakang/validator'
-import { UpdateFilter } from 'mongodb'
+import { Document, UpdateFilter } from 'mongodb'
 import * as uuid from 'uuid'
 import { isUpdateQuery } from './query'
 
