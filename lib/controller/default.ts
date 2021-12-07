@@ -1,7 +1,7 @@
 import EventEmitter from '@kakang/eventemitter'
 import AggregateBuilder, { MatchPipeline, SortPipeline } from '@kakang/mongodb-aggregate-builder'
 import { isEmpty, isExist, isObject, isString } from '@kakang/validator'
-import { BulkWriteOptions, Collection, CreateIndexesOptions, DeleteOptions, Document, Filter, FindOptions, IndexSpecification, InsertOneOptions, OptionalId, UpdateFilter, UpdateOptions, WithId } from 'mongodb'
+import { BulkWriteOptions, Collection, CreateIndexesOptions, DeleteOptions, Document, Filter, FindOptions, IndexSpecification, InsertOneOptions, OptionalId, UpdateFilter, UpdateOptions } from 'mongodb'
 import { P } from 'pino'
 import { kCreateIndex, kPrivate } from '../symbols'
 import { appendBasicSchema, appendUpdateSchema } from '../utils/append'
@@ -121,9 +121,9 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
   async find (filter?: Filter<TSchema>, options?: FindOptions<TSchema>): Promise<TSchema[]> {
     filter = filter ?? {}
     await this.emit('pre-find', filter, options)
-    const result = await this.collection.find(filter as Filter<WithId<TSchema>>, options as FindOptions<TSchema>).toArray()
+    const result = await this.collection.find(filter, options as FindOptions<TSchema>).toArray()
     await this.emit('post-find', result, filter, options)
-    return result as TSchema[]
+    return result as unknown as TSchema[]
   }
 
   async findOne (filter?: Filter<TSchema>, options?: FindOptions<TSchema>): Promise<TSchema | null> {
@@ -161,7 +161,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
   async updateMany (filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions): Promise<TSchema[]> {
     const doc = appendUpdateSchema(docs)
     await this.emit('pre-update-many', filter, doc, options)
-    const o = await this.collection.find(filter as Filter<WithId<TSchema>>).toArray()
+    const o = await this.collection.find(filter).toArray()
     if (isUpdateQuery(doc)) {
       await this.collection.updateMany(filter, doc, options as UpdateOptions)
     } else {
@@ -171,7 +171,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     await this.emit('post-update-many', result, filter, doc, options)
     // single end-point for update, we do not allow to update result on this end-point
     await this.emit('post-update')
-    return result as TSchema[]
+    return result as unknown as TSchema[]
   }
 
   async updateById (id: string, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions): Promise<TSchema | null> {
@@ -202,13 +202,13 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
 
   async deleteMany (filter?: Filter<TSchema>, options?: DeleteOptions): Promise<TSchema[]> {
     filter = filter ?? {}
-    const result = await this.collection.find(filter as Filter<WithId<TSchema>>).toArray()
+    const result = await this.collection.find(filter).toArray()
     await this.emit('pre-delete-many', filter, options)
     await this.collection.deleteMany(filter, options as DeleteOptions)
     await this.emit('post-delete-many', result, filter, options)
     // single end-point for delete, we do not allow to update result on this end-point
     await this.emit('post-delete')
-    return result as TSchema[]
+    return result as unknown as TSchema[]
   }
 
   async deleteById (id: string, options?: DeleteOptions): Promise<TSchema | null> {
