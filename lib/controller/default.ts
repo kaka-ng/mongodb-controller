@@ -66,37 +66,44 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     this.postMatchKeywords = options?.postMatchKeywords ?? []
     this[kCreateIndex]()
     this.emit('initialized').finally(noop)
-    this.logger.debug({ func: 'constructor' }, 'create controller [%s] with options %j', this.collectionName, options)
+    this.logger.debug({ func: 'constructor', meta: { options } }, 'created')
   }
 
   /**
    * Index
    */
   [kCreateIndex] (): void {
-    this.logger.trace({ func: 'Symbol("createIndex")' })
+    this.logger.debug({ func: 'Symbol("createIndex")', meta: { indexes: this[kPrivate].indexes } }, 'started')
     // we do not wait for index creation
     for (const index of this[kPrivate].indexes) {
       this.collection.createIndex(index.indexSpec, index.options ?? {}, noop)
+      this.logger.trace({ func: 'Symbol("createIndex")', meta: { index } }, 'index %j is created', index.indexSpec)
     }
+    this.logger.debug({ func: 'Symbol("createIndex")', meta: { indexes: this[kPrivate].indexes } }, 'ended')
   }
 
   async count (search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>): Promise<number> {
+    this.logger.debug({ func: 'count', meta: { search, filter } }, 'started')
     await this.emit('pre-count', search, filter)
     const found = await this.search(search, filter)
     const result = found.length
     await this.emit('post-count', result, search, filter)
+    this.logger.debug({ func: 'count', meta: { search, filter } }, 'ended')
     return result
   }
 
   async search<U = TSchema> (search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>, sort?: string, page?: number, pageSize?: number): Promise<U[]> {
+    this.logger.debug({ func: 'search', meta: { search, filter, sort, page, pageSize } }, 'started')
     await this.emit('pre-search', search, filter, sort, page, pageSize)
     const pipeline = this.computePipeline(search, filter, sort, page, pageSize).toArray()
     const result = await this.collection.aggregate<U>(pipeline).toArray()
     await this.emit('post-search', result, search, filter, sort, page, pageSize)
+    this.logger.debug({ func: 'search', meta: { search, filter, sort, page, pageSize } }, 'ended')
     return result
   }
 
   async insertOne (docs: TSchema, options?: InsertOneOptions): Promise<TSchema | null> {
+    this.logger.debug({ func: 'insertOne', meta: { docs, options } }, 'started')
     const doc = appendBasicSchema(docs)
     await this.emit('pre-insert-one', doc, options)
     await this.collection.insertOne(doc as OptionalId<TSchema>, options as InsertOneOptions)
@@ -104,10 +111,12 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     await this.emit('post-insert-one', result, doc, options)
     // single end-point for insert, we do not allow to update result on this end-point
     await this.emit('post-insert')
+    this.logger.debug({ func: 'insertOne', meta: { docs, options } }, 'ended')
     return result
   }
 
   async insertMany (docs: TSchema[], options?: BulkWriteOptions): Promise<TSchema[]> {
+    this.logger.debug({ func: 'insertMany', meta: { docs, options } }, 'started')
     const doc = appendBasicSchema(docs)
     await this.emit('pre-insert-many', doc, options)
     await this.collection.insertMany(doc as Array<OptionalId<TSchema>>, options as BulkWriteOptions)
@@ -115,34 +124,42 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     await this.emit('post-insert-many', result, doc, options)
     // single end-point for insert, we do not allow to update result on this end-point
     await this.emit('post-insert')
+    this.logger.debug({ func: 'insertMany', meta: { docs, options } }, 'ended')
     return result
   }
 
   async find (filter?: Filter<TSchema>, options?: FindOptions<TSchema>): Promise<TSchema[]> {
+    this.logger.debug({ func: 'find', meta: { filter, options } }, 'started')
     filter = filter ?? {}
     await this.emit('pre-find', filter, options)
     const result = await this.collection.find(filter, options as FindOptions<TSchema>).toArray()
     await this.emit('post-find', result, filter, options)
+    this.logger.debug({ func: 'find', meta: { filter, options } }, 'ended')
     return result as unknown as TSchema[]
   }
 
   async findOne (filter?: Filter<TSchema>, options?: FindOptions<TSchema>): Promise<TSchema | null> {
+    this.logger.debug({ func: 'findOne', meta: { filter, options } }, 'started')
     filter = filter ?? {}
     await this.emit('pre-find-one', filter, options)
     const result = await this.collection.findOne(filter, options)
     await this.emit('post-find-one', result, filter, options)
+    this.logger.debug({ func: 'findOne', meta: { filter, options } }, 'ended')
     return result
   }
 
   async findById (id: string, options?: FindOptions<TSchema>): Promise<TSchema | null> {
+    this.logger.debug({ func: 'findById', meta: { id, options } }, 'started')
     await this.emit('pre-find-by-id', id, options)
     const filter: Filter<TSchema> = { id } as unknown as Filter<TSchema>
     const result = await this.collection.findOne(filter, options)
     await this.emit('post-find-by-id', result, id, options)
+    this.logger.debug({ func: 'findById', meta: { id, options } }, 'ended')
     return result
   }
 
   async updateOne (filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions): Promise<TSchema | null> {
+    this.logger.debug({ func: 'updateOne', meta: { filter, docs, options } }, 'started')
     const doc = appendUpdateSchema(docs)
     await this.emit('pre-update-one', filter, doc, options)
     const o = await this.collection.findOne(filter)
@@ -155,10 +172,12 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     await this.emit('post-update-one', result, filter, doc, options)
     // single end-point for update, we do not allow to update result on this end-point
     await this.emit('post-update')
+    this.logger.debug({ func: 'updateOne', meta: { filter, docs, options } }, 'ended')
     return result as TSchema
   }
 
   async updateMany (filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions): Promise<TSchema[]> {
+    this.logger.debug({ func: 'updateMany', meta: { filter, docs, options } }, 'started')
     const doc = appendUpdateSchema(docs)
     await this.emit('pre-update-many', filter, doc, options)
     const o = await this.collection.find(filter).toArray()
@@ -171,10 +190,12 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     await this.emit('post-update-many', result, filter, doc, options)
     // single end-point for update, we do not allow to update result on this end-point
     await this.emit('post-update')
+    this.logger.debug({ func: 'updateMany', meta: { filter, docs, options } }, 'ended')
     return result as unknown as TSchema[]
   }
 
   async updateById (id: string, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions): Promise<TSchema | null> {
+    this.logger.debug({ func: 'updateById', meta: { id, docs, options } }, 'started')
     const doc = appendUpdateSchema(docs)
     await this.emit('pre-update-by-id', id, doc, options)
     const filter: Filter<TSchema> = { id } as unknown as Filter<TSchema>
@@ -187,20 +208,24 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     await this.emit('post-update-by-id', result, id, doc, options)
     // single end-point for update, we do not allow to update result on this end-point
     await this.emit('post-update')
+    this.logger.debug({ func: 'updateById', meta: { id, docs, options } }, 'ended')
     return result as unknown as TSchema
   }
 
   async deleteOne (filter: Filter<TSchema>, options?: DeleteOptions): Promise<TSchema | null> {
+    this.logger.debug({ func: 'deleteOne', meta: { filter, options } }, 'started')
     const result = await this.collection.findOne(filter)
     await this.emit('pre-delete-one', filter, options)
     await this.collection.deleteOne(filter, options as DeleteOptions)
     await this.emit('post-delete-one', result, filter, options)
     // single end-point for delete, we do not allow to update result on this end-point
     await this.emit('post-delete')
+    this.logger.debug({ func: 'deleteOne', meta: { filter, options } }, 'ended')
     return result as TSchema
   }
 
   async deleteMany (filter?: Filter<TSchema>, options?: DeleteOptions): Promise<TSchema[]> {
+    this.logger.debug({ func: 'deleteMany', meta: { filter, options } }, 'started')
     filter = filter ?? {}
     const result = await this.collection.find(filter).toArray()
     await this.emit('pre-delete-many', filter, options)
@@ -208,10 +233,12 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     await this.emit('post-delete-many', result, filter, options)
     // single end-point for delete, we do not allow to update result on this end-point
     await this.emit('post-delete')
+    this.logger.debug({ func: 'deleteMany', meta: { filter, options } }, 'ended')
     return result as unknown as TSchema[]
   }
 
   async deleteById (id: string, options?: DeleteOptions): Promise<TSchema | null> {
+    this.logger.debug({ func: 'deleteById', meta: { id, options } }, 'started')
     const filter: Filter<TSchema> = { id } as unknown as Filter<TSchema>
     const result = await this.collection.findOne<TSchema>(filter, options)
     await this.emit('pre-delete-by-id', id, options)
@@ -219,12 +246,14 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     await this.emit('post-delete-by-id', result, id, options)
     // single end-point for delete, we do not allow to update result on this end-point
     await this.emit('post-delete')
+    this.logger.debug({ func: 'deleteById', meta: { id, options } }, 'ended')
     return result
   }
 
   // search is always pre-query
   // we filter first then reduce the area of aggregate
   computePreQuery (search?: any, filter?: any, ..._args: any[]): AggregateBuilder {
+    this.logger.trace({ func: 'computePreQuery', meta: { search, filter, args: _args } }, 'started')
     const opt: MatchPipeline = {}
     const arr: any[] = []
     const builder = new AggregateBuilder()
@@ -254,12 +283,14 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
 
     if (arr.length > 0) opt.$and = arr
     builder.match(opt)
+    this.logger.trace({ func: 'computePreQuery', meta: { search, filter, args: _args } }, 'ended')
     return builder
   }
 
   // search is always pre-query
   // we filter first then reduce the area of aggregate
   computePostQuery (filter?: any, ..._args: any[]): AggregateBuilder | false {
+    this.logger.trace({ func: 'computePostQuery', meta: { filter, args: _args } }, 'started')
     const opt: MatchPipeline = {}
     const arr: any[] = []
     const builder = new AggregateBuilder()
@@ -281,10 +312,12 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     if (arr.length > 0) opt.$and = arr
     else return false
     builder.match(opt)
+    this.logger.trace({ func: 'computePostQuery', meta: { filter, args: _args } }, 'ended')
     return builder
   }
 
   computeSort (sort?: string): AggregateBuilder | false {
+    this.logger.trace({ func: 'computeSort', meta: { sort } }, 'started')
     if (typeof sort === 'string') {
       const opt: SortPipeline = {}
       const builder = new AggregateBuilder()
@@ -296,26 +329,31 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
         if (isExist(key)) opt[key] = order
       })
       builder.sort(opt)
+      this.logger.trace({ func: 'computeSort', meta: { sort } }, 'ended')
       return builder
     } else {
+      this.logger.trace({ func: 'computeSort', meta: { sort } }, 'ended')
       return false
     }
   }
 
   computeOption (page?: number, pageSize?: number): AggregateBuilder | false {
+    this.logger.trace({ func: 'computeOption', meta: { page, pageSize } }, 'started')
     if (typeof page !== 'undefined' && typeof pageSize !== 'undefined') {
       const builder = new AggregateBuilder()
       const skip = page > 0 ? (page - 1) * pageSize : 0
       builder.limit(pageSize + skip)
       builder.skip(skip)
+      this.logger.trace({ func: 'computeOption', meta: { page, pageSize } }, 'ended')
       return builder
     } else {
+      this.logger.trace({ func: 'computeOption', meta: { page, pageSize } }, 'ended')
       return false
     }
   }
 
   computePipeline (search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>, sort?: string, page?: number, pageSize?: number): AggregateBuilder {
-    this.logger.trace({ func: 'computePipeline', search, filter, sort, page, pageSize }, 'compute pipeline')
+    this.logger.trace({ func: 'computePipeline', meta: { search, filter, sort, page, pageSize } }, 'started')
     const builder = this.computePreQuery(search, filter)
     builder.concat(this.buildAggregateBuilder())
     const s = this.computeSort(sort)
@@ -324,6 +362,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     if (p !== false) builder.concat(p)
     const q = this.computePostQuery(filter)
     if (q !== false) builder.concat(q)
+    this.logger.trace({ func: 'computePipeline', meta: { search, filter, sort, page, pageSize } }, 'ended')
     return builder
   }
 
@@ -332,11 +371,12 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
   }
 
   async resetDatabase (): Promise<boolean> {
-    this.logger.trace({ func: 'resetDatabase' })
+    this.logger.trace({ func: 'resetDatabase' }, 'started')
     await this.emit('pre-reset')
     await this.collection.drop()
     await this[kCreateIndex]()
     await this.emit('post-reset')
+    this.logger.trace({ func: 'resetDatabase' }, 'ended')
     return true
   }
 }

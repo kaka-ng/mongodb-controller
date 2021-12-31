@@ -4,17 +4,17 @@ import { Collection, Document, Filter, FindOptions, UpdateFilter, UpdateOptions 
 import { retrieveUpdateQueryData } from '../utils/query'
 import { Controller, ControllerOptions } from './default'
 
-export interface MultiLanguageControllerOptions extends Partial<ControllerOptions> {
-  slugField: string
-  commonFields?: string[]
+export interface MultiLanguageControllerOptions<TSchema extends Document = Document> extends Partial<ControllerOptions> {
+  slugField: keyof TSchema
+  commonFields?: Array<keyof TSchema>
 }
 
 export class MultiLanguageController<TSchema extends Document = Document> extends Controller<TSchema> {
-  slugField: string
-  commonFields: string[]
+  slugField: keyof TSchema
+  commonFields: Array<keyof TSchema>
 
-  constructor (collection: Collection| undefined, options: MultiLanguageControllerOptions) {
-    // common fields must be an index
+  constructor (collection: Collection| undefined, options: MultiLanguageControllerOptions<TSchema>) {
+    // slug field must be an index
     // it can greatly increase the searching time
     options.indexes = options.indexes ?? []
     options.indexes.push({ indexSpec: { [options.slugField]: 1 } })
@@ -24,14 +24,17 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
   }
 
   async search<U = TSchema> (search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>, sort?: string, page?: number, pageSize?: number, language?: string): Promise<U[]> {
+    this.logger.debug({ func: 'search', meta: { search, filter, sort, page, pageSize } }, 'started')
     await this.emit('pre-search', search, filter, sort, page, pageSize)
     const pipeline = this.computePipeline(search, filter, sort, page, pageSize, language).toArray()
     const result = await this.collection.aggregate<U>(pipeline).toArray()
     await this.emit('post-search', result, search, filter, sort, page, pageSize)
+    this.logger.debug({ func: 'search', meta: { search, filter, sort, page, pageSize } }, 'ended')
     return result
   }
 
   async findOneByLanguage (language: string, filter?: Filter<TSchema>, options?: FindOptions<TSchema>): Promise<{ isFallback: boolean, item: TSchema | null }> {
+    this.logger.debug({ func: 'findOneByLanguage', meta: { language, filter, options } }, 'started')
     filter = filter ?? {}
     let isFallback = false
     let item = await this.collection.findOne({ ...filter, language }, options)
@@ -39,15 +42,23 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
       item = await this.collection.findOne(filter, options)
       isFallback = isExist(item)
     }
+    this.logger.debug({ func: 'findOneByLanguage', meta: { language, filter, options } }, 'ended')
     return { isFallback, item }
   }
 
   async updateOneByLanguage (language: string, filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions): Promise<{ isFallback: boolean, item: TSchema | null }> {
+    this.logger.debug({ func: 'updateOneByLanguage', meta: { language, filter, docs, options } }, 'started')
     const { isFallback, item } = await this.findOneByLanguage(language, filter)
     if (isEmpty(item)) return { isFallback, item: null }
 
+    const commonDocs: Partial<TSchema> = {}
+    const d = retrieveUpdateQueryData(docs)
+    for (const field of this.commonFields) {
+      commonDocs[field] = d[field]
+    }
+
     // update common fields
-    await this.collection.updateMany({ [this.slugField]: item[this.slugField] } as any, {})
+    await this.updateMany({ [this.slugField]: item[this.slugField] } as any, { $set: commonDocs })
 
     // insert when it is fallback, update when item exist
     if (isFallback) {
@@ -61,11 +72,14 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
       await this.updateOne({ ...filter, language }, docs)
     }
 
-    return await this.findOneByLanguage(language, filter)
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    const result = await this.findOneByLanguage(language, { [this.slugField]: item[this.slugField] } as Filter<TSchema>)
+    this.logger.debug({ func: 'updateOneByLanguage', meta: { language, filter, docs, options } }, 'ended')
+    return result
   }
 
   computePipeline (search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>, sort?: string, page?: number, pageSize?: number, language?: string): AggregateBuilder {
-    this.logger.trace({ func: 'computePipeline', search, filter, sort, page, pageSize }, 'compute pipeline')
+    this.logger.trace({ func: 'computePipeline', meta: { search, filter, sort, page, pageSize, language } }, 'started')
     const builder = this.computePreQuery(search, filter)
     builder.concat(this.buildAggregateBuilder(language))
     const s = this.computeSort(sort)
@@ -74,6 +88,7 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
     if (p !== false) builder.concat(p)
     const q = this.computePostQuery(filter)
     if (q !== false) builder.concat(q)
+    this.logger.trace({ func: 'computePipeline', meta: { search, filter, sort, page, pageSize, language } }, 'ended')
     return builder
   }
 
@@ -81,13 +96,13 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
     const builder = new AggregateBuilder()
     // we group by common field after the first match filter
     builder.group({
-      _id: `$${this.slugField}`
+      _id: `$${this.slugField as string}`
     })
     // we fetch all the language
     builder.lookup({
       from: this.collectionName,
       localField: '_id',
-      foreignField: this.slugField,
+      foreignField: this.slugField as string,
       as: 'items'
     })
     // we find if the items have matched language
