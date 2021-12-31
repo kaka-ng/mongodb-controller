@@ -1,6 +1,6 @@
 {
   "name": "@kakang/mongodb-controller",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -14,7 +14,7 @@
     "lib": "lib"
   },
   "scripts": {
-    "clean": "npx rimraf \"lib/**/*.js\" \"lib/**/*.map\" \"lib/**/*.d.ts\" \"test/**/*.js\" \"test/**/*.map\" \"test/**/*.d.ts\"",
+    "clean": "npx rimraf \"lib/mjs\" \"lib/**/*.js\" \"lib/**/*.map\" \"lib/**/*.d.ts\" \"test/**/*.js\" \"test/**/*.map\" \"test/**/*.d.ts\"",
     "lint": "eslint --ext .ts lib test",
     "lint:fix": "npm run lint -- --fix",
     "build": "rollup -c",
@@ -22,7 +22,8 @@
     "unit": "tap",
     "test": "npm run lint && npm run unit",
     "coverage": "tap --coverage --coverage-report=lcovonly",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "postpublish": "npm run clean"
   },
   "publishConfig": {
     "access": "public",
