@@ -1,7 +1,7 @@
 import EventEmitter from '@kakang/eventemitter'
 import AggregateBuilder, { MatchPipeline, SortPipeline } from '@kakang/mongodb-aggregate-builder'
 import { isEmpty, isExist, isObject, isString } from '@kakang/validator'
-import { BulkWriteOptions, Collection, CreateIndexesOptions, DeleteOptions, Document, Filter, FindOptions, IndexSpecification, InsertOneOptions, OptionalId, UpdateFilter, UpdateOptions } from 'mongodb'
+import { BulkWriteOptions, Collection, CreateIndexesOptions, DeleteOptions, Document, Filter, FindOptions, IndexSpecification, InsertOneOptions, OptionalUnlessRequiredId, UpdateFilter, UpdateOptions } from 'mongodb'
 import { P } from 'pino'
 import { kCreateIndex, kPrivate } from '../symbols'
 import { appendBasicSchema, appendUpdateSchema } from '../utils/append'
@@ -106,7 +106,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     this.logger.debug({ func: 'insertOne', meta: { docs, options } }, 'started')
     const doc = appendBasicSchema(docs)
     await this.emit('pre-insert-one', doc, options)
-    await this.collection.insertOne(doc as OptionalId<TSchema>, options as InsertOneOptions)
+    await this.collection.insertOne(doc as OptionalUnlessRequiredId<TSchema>, options as InsertOneOptions)
     const result = await this.collection.findOne<TSchema>({ id: doc.id })
     await this.emit('post-insert-one', result, doc, options)
     // single end-point for insert, we do not allow to update result on this end-point
@@ -119,7 +119,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     this.logger.debug({ func: 'insertMany', meta: { docs, options } }, 'started')
     const doc = appendBasicSchema(docs)
     await this.emit('pre-insert-many', doc, options)
-    await this.collection.insertMany(doc as Array<OptionalId<TSchema>>, options as BulkWriteOptions)
+    await this.collection.insertMany(doc as Array<OptionalUnlessRequiredId<TSchema>>, options as BulkWriteOptions)
     const result = await this.collection.find<TSchema>({ id: { $in: doc.map((d) => d.id) } }, { sort: { createdAt: 1 } }).toArray()
     await this.emit('post-insert-many', result, doc, options)
     // single end-point for insert, we do not allow to update result on this end-point
