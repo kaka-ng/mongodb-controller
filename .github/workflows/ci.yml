@@ -33,7 +33,7 @@ jobs:
 
       - name: Use Node.js
         id: setup_node
-        uses: actions/setup-node@v2.5.1
+        uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
 
@@ -85,6 +85,9 @@ jobs:
   automerge:
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
     steps:
       - uses: fastify/github-action-merge-dependabot@v2.5.0
         if: ${{ github.actor == 'dependabot[bot]' && github.event_name == 'pull_request' }}
