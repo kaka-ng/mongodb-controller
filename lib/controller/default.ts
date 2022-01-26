@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/method-signature-style */
 import EventEmitter from '@kakang/eventemitter'
 import AggregateBuilder, { MatchPipeline, SortPipeline } from '@kakang/mongodb-aggregate-builder'
 import { isEmpty, isExist, isObject, isString } from '@kakang/validator'
@@ -104,6 +105,8 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
 
   async insertOne (docs: TSchema, options?: InsertOneOptions): Promise<TSchema | null> {
     this.logger.debug({ func: 'insertOne', meta: { docs, options } }, 'started')
+    // single end-point for insert validation
+    await this.emit('pre-insert', docs)
     const doc = appendBasicSchema(docs)
     await this.emit('pre-insert-one', doc, options)
     await this.collection.insertOne(doc as OptionalUnlessRequiredId<TSchema>, options as InsertOneOptions)
@@ -117,6 +120,8 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
 
   async insertMany (docs: TSchema[], options?: BulkWriteOptions): Promise<TSchema[]> {
     this.logger.debug({ func: 'insertMany', meta: { docs, options } }, 'started')
+    // single end-point for insert validation
+    await this.emit('pre-insert', docs)
     const doc = appendBasicSchema(docs)
     await this.emit('pre-insert-many', doc, options)
     await this.collection.insertMany(doc as Array<OptionalUnlessRequiredId<TSchema>>, options as BulkWriteOptions)
@@ -160,6 +165,8 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
 
   async updateOne (filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions): Promise<TSchema | null> {
     this.logger.debug({ func: 'updateOne', meta: { filter, docs, options } }, 'started')
+    // single end-point for update validation
+    await this.emit('pre-update', filter, docs)
     const doc = appendUpdateSchema(docs)
     await this.emit('pre-update-one', filter, doc, options)
     const o = await this.collection.findOne(filter)
@@ -178,6 +185,8 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
 
   async updateMany (filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions): Promise<TSchema[]> {
     this.logger.debug({ func: 'updateMany', meta: { filter, docs, options } }, 'started')
+    // single end-point for update validation
+    await this.emit('pre-update', filter, docs)
     const doc = appendUpdateSchema(docs)
     await this.emit('pre-update-many', filter, doc, options)
     const o = await this.collection.find(filter).toArray()
@@ -196,6 +205,8 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
 
   async updateById (id: string, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions): Promise<TSchema | null> {
     this.logger.debug({ func: 'updateById', meta: { id, docs, options } }, 'started')
+    // single end-point for update validation
+    await this.emit('pre-update', { id }, docs)
     const doc = appendUpdateSchema(docs)
     await this.emit('pre-update-by-id', id, doc, options)
     const filter: Filter<TSchema> = { id } as unknown as Filter<TSchema>
@@ -214,6 +225,8 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
 
   async deleteOne (filter: Filter<TSchema>, options?: DeleteOptions): Promise<TSchema | null> {
     this.logger.debug({ func: 'deleteOne', meta: { filter, options } }, 'started')
+    // single end-point for delete validation
+    await this.emit('pre-delete', filter)
     const result = await this.collection.findOne(filter)
     await this.emit('pre-delete-one', filter, options)
     await this.collection.deleteOne(filter, options as DeleteOptions)
@@ -226,6 +239,8 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
 
   async deleteMany (filter?: Filter<TSchema>, options?: DeleteOptions): Promise<TSchema[]> {
     this.logger.debug({ func: 'deleteMany', meta: { filter, options } }, 'started')
+    // single end-point for delete validation
+    await this.emit('pre-delete', filter)
     filter = filter ?? {}
     const result = await this.collection.find(filter).toArray()
     await this.emit('pre-delete-many', filter, options)
@@ -239,6 +254,8 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
 
   async deleteById (id: string, options?: DeleteOptions): Promise<TSchema | null> {
     this.logger.debug({ func: 'deleteById', meta: { id, options } }, 'started')
+    // single end-point for delete validation
+    await this.emit('pre-delete', { id })
     const filter: Filter<TSchema> = { id } as unknown as Filter<TSchema>
     const result = await this.collection.findOne<TSchema>(filter, options)
     await this.emit('pre-delete-by-id', id, options)
@@ -379,4 +396,40 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     this.logger.trace({ func: 'resetDatabase' }, 'ended')
     return true
   }
+}
+
+export interface Controller<TSchema extends Document = Document> extends EventEmitter {
+  on (eventName: 'initialized', listener: () => void): this
+  on (eventName: 'pre-count', listener: (search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>) => void): this
+  on (eventName: 'post-count', listener: (result: number, search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>) => void): this
+  on (eventName: 'pre-search', listener: (search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>, sort?: string, page?: number, pageSize?: number) => void): this
+  on (eventName: 'post-search', listener: <U = TSchema>(result: U[], search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>, sort?: string, page?: number, pageSize?: number) => void): this
+  on (eventName: 'pre-insert', listener: (docs: TSchema | TSchema[]) => void): this
+  on (eventName: 'pre-insert-one', listener: (docs: TSchema, options?: InsertOneOptions) => void): this
+  on (eventName: 'post-insert-one', listener: (result: TSchema | null, docs: TSchema, options?: InsertOneOptions) => void): this
+  on (eventName: 'pre-insert-many', listener: (docs: TSchema[], options?: BulkWriteOptions) => void): this
+  on (eventName: 'post-insert-many', listener: (result: TSchema[], docs: TSchema[], options?: BulkWriteOptions) => void): this
+  on (eventName: 'post-insert', listener: () => void): this
+  on (eventName: 'pre-find', listener: (filter?: Filter<TSchema>, options?: FindOptions<TSchema>) => void): this
+  on (eventName: 'post-find', listener: (result: TSchema[], filter?: Filter<TSchema>, options?: FindOptions<TSchema>) => void): this
+  on (eventName: 'pre-find-one', listener: (filter?: Filter<TSchema>, options?: FindOptions<TSchema>) => void): this
+  on (eventName: 'post-find-one', listener: (result: TSchema | null, filter?: Filter<TSchema>, options?: FindOptions<TSchema>) => void): this
+  on (eventName: 'pre-find-by-id', listener: (id: string, options?: FindOptions<TSchema>) => void): this
+  on (eventName: 'post-find-by-id', listener: (result: TSchema | null, id: string, options?: FindOptions<TSchema>) => void): this
+  on (eventName: 'pre-update', listener: (filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>) => void): this
+  on (eventName: 'pre-update-one', listener: (filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions) => void): this
+  on (eventName: 'post-update-one', listener: (result: TSchema | null, filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions) => void): this
+  on (eventName: 'pre-update-many', listener: (filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions) => void): this
+  on (eventName: 'post-update-many', listener: (result: TSchema[], filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions) => void): this
+  on (eventName: 'pre-update-by-id', listener: (id: string, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions) => void): this
+  on (eventName: 'post-update-by-id', listener: (result: TSchema | null, id: string, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions) => void): this
+  on (eventName: 'post-update', listener: () => void): this
+  on (eventName: 'pre-delete', listener: (filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>) => void): this
+  on (eventName: 'pre-delete-one', listener: (filter: Filter<TSchema>, options?: DeleteOptions) => void): this
+  on (eventName: 'post-delete-one', listener: (result: TSchema | null, filter: Filter<TSchema>, options?: DeleteOptions) => void): this
+  on (eventName: 'pre-delete-many', listener: (filter?: Filter<TSchema>, options?: DeleteOptions) => void): this
+  on (eventName: 'post-delete-many', listener: (result: TSchema[], filter?: Filter<TSchema>, options?: DeleteOptions) => void): this
+  on (eventName: 'pre-delete-by-id', listener: (id: string, options?: DeleteOptions) => void): this
+  on (eventName: 'post-delete-by-id', listener: (result: TSchema | null, id: string, options?: DeleteOptions) => void): this
+  on (eventName: 'post-delete', listener: () => void): this
 }
