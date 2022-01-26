@@ -432,4 +432,6 @@ export interface Controller<TSchema extends Document = Document> extends EventEm
   on (eventName: 'pre-delete-by-id', listener: (id: string, options?: DeleteOptions) => void): this
   on (eventName: 'post-delete-by-id', listener: (result: TSchema | null, id: string, options?: DeleteOptions) => void): this
   on (eventName: 'post-delete', listener: () => void): this
+  on (eventName: 'pre-reset', listener: () => void): this
+  on (eventName: 'post-reset', listener: () => void): this
 }
