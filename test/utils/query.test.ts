@@ -1,5 +1,5 @@
 import t from 'tap'
-import { findNextPair, isUpdateQuery, normalize } from '../../lib/utils/query'
+import { findNextPair, isUpdateQuery, mergeUpdateQueryData, normalize } from '../../lib/utils/query'
 
 t.test('should be update query', function (t) {
   const keys = ['$currentDate', '$inc', '$min', '$max', '$mul', '$rename', '$set', '$setOnInsert', '$unset', '$addToSet', '$pop', '$pull', '$push', '$pushAll', '$bit']
@@ -13,6 +13,19 @@ t.test('should be update query', function (t) {
 t.test('should not be update query', function (t) {
   t.plan(1)
   t.equal(isUpdateQuery({ foo: 'bar' }), false)
+})
+
+t.test('should merge update query', function (t) {
+  const cases = [
+    { from: {}, to: {}, output: { $set: {} } },
+    { from: { $set: { foo: 'bar' } }, to: { bar: 'baz' }, output: { $set: { foo: 'bar', bar: 'baz' } } },
+    { from: { bar: 'baz' }, to: { $set: { foo: 'bar' } }, output: { $set: { foo: 'bar', bar: 'baz' } } }
+  ]
+  t.plan(cases.length)
+
+  for (const kase of cases) {
+    t.same(mergeUpdateQueryData(kase.from, kase.to), kase.output)
+  }
 })
 
 t.test('empty string findNextPair', function (t) {
