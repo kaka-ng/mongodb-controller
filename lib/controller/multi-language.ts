@@ -1,5 +1,5 @@
 import AggregateBuilder from '@kakang/mongodb-aggregate-builder'
-import { isEmpty, isExist } from '@kakang/validator'
+import { isEmpty, isExist, isNull, isUndefined } from '@kakang/validator'
 import { Collection, Document, Filter, FindOptions, UpdateFilter, UpdateOptions } from 'mongodb'
 import { retrieveUpdateQueryData } from '../utils/query'
 import { Controller, ControllerOptions } from './default'
@@ -54,7 +54,8 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
     const commonDocs: Partial<TSchema> = {}
     const d = retrieveUpdateQueryData(docs)
     for (const field of this.commonFields) {
-      commonDocs[field] = d[field]
+      // we should only set when data is not null or undefined
+      if (!isNull(d[field]) && !isUndefined(d[field])) { commonDocs[field] = d[field] }
     }
 
     // update common fields
