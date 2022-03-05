@@ -12,6 +12,7 @@ import { findNextPair, isUpdateQuery, normalize, transformRegExpSearch } from '.
 
 export interface ControllerOptions {
   logger: P.LoggerOptions | P.BaseLogger
+  skipIndex: true
   autoRegExpSearch: boolean
   searchFields: string[]
   postMatchKeywords: string[]
@@ -65,7 +66,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     this.autoRegExpSearch = options?.autoRegExpSearch ?? true
     this.searchFields = options?.searchFields ?? []
     this.postMatchKeywords = options?.postMatchKeywords ?? []
-    this[kCreateIndex]()
+    if (options?.skipIndex !== true) this[kCreateIndex]()
     this.emit('initialized').finally(noop)
     this.logger.debug({ func: 'constructor', meta: { options } }, 'created')
   }
