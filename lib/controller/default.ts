@@ -12,7 +12,7 @@ import { findNextPair, isUpdateQuery, normalize, transformRegExpSearch } from '.
 
 export interface ControllerOptions {
   logger: P.LoggerOptions | P.BaseLogger
-  skipIndex: true
+  skipIndex: boolean
   autoRegExpSearch: boolean
   searchFields: string[]
   postMatchKeywords: string[]
@@ -23,6 +23,7 @@ interface Private<TSchema> {
   collection: Collection<TSchema>
   logger: P.BaseLogger
   indexes: Array<{ indexSpec: IndexSpecification, options?: CreateIndexesOptions }>
+  skipIndex: boolean
 }
 
 export class Controller<TSchema extends Document = Document> extends EventEmitter {
@@ -58,7 +59,8 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     this[kPrivate] = {
       collection: null,
       logger: null,
-      indexes: [{ indexSpec: { id: 1 }, options: { unique: true } }]
+      indexes: [{ indexSpec: { id: 1 }, options: { unique: true } }],
+      skipIndex: options?.skipIndex ?? false
     } as any
     this.collection = collection
     this[kPrivate].logger = createLogger(this.collectionName, options?.logger)
@@ -66,7 +68,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     this.autoRegExpSearch = options?.autoRegExpSearch ?? true
     this.searchFields = options?.searchFields ?? []
     this.postMatchKeywords = options?.postMatchKeywords ?? []
-    if (options?.skipIndex !== true) this[kCreateIndex]()
+    if (!this[kPrivate].skipIndex) this[kCreateIndex]()
     this.emit('initialized').finally(noop)
     this.logger.debug({ func: 'constructor', meta: { options } }, 'created')
   }
@@ -391,8 +393,17 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
   async resetDatabase (): Promise<boolean> {
     this.logger.trace({ func: 'resetDatabase' }, 'started')
     await this.emit('pre-reset')
-    await this.collection.drop()
-    await this[kCreateIndex]()
+    try {
+      await this.collection.drop()
+    } catch (err: any) {
+      // we only ignore the error when it throw by non-existance collection
+      if (err.message === 'ns not found') {
+        this.logger.trace({ func: 'resetDatabase' }, 'remove non-existance collection.')
+      } else {
+        throw err
+      }
+    }
+    if (!this[kPrivate].skipIndex) await this[kCreateIndex]()
     await this.emit('post-reset')
     this.logger.trace({ func: 'resetDatabase' }, 'ended')
     return true
