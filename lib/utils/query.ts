@@ -1,10 +1,11 @@
 import { Date as D, isArray, isJSON, isNull, isNumber, isObject, isString } from '@kakang/validator'
 import { Document, UpdateFilter } from 'mongodb'
 
+const UpdateQueryKeys = new Set(['$currentDate', '$inc', '$min', '$max', '$mul', '$rename', '$set', '$setOnInsert', '$unset', '$addToSet', '$pop', '$pull', '$push', '$pushAll', '$bit'])
+
 export function isUpdateQuery <TSchema extends Document = Document> (docs: UpdateFilter<TSchema> | Partial<TSchema>): docs is UpdateFilter<TSchema> {
-  const keys = Object.keys(docs)
-  for (let i = keys.length - 1; i >= 0; i--) {
-    if (['$currentDate', '$inc', '$min', '$max', '$mul', '$rename', '$set', '$setOnInsert', '$unset', '$addToSet', '$pop', '$pull', '$push', '$pushAll', '$bit'].includes(keys[i])) return true
+  for (const key of Object.keys(docs)) {
+    if (UpdateQueryKeys.has(key)) return true
   }
   return false
 }
@@ -69,10 +70,10 @@ export function normalize (text: any): unknown {
   return text
 }
 
-const kStart = '{['
-const kEnd = '}]'
-const kKeyAllowedCharacters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.$'
-const kDelimiter = ':,'
+const kStart = new Set(['{', '['])
+const kEnd = new Set(['}', ']'])
+const kKeyAllowedCharacters = new Set(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '$'])
+const kDelimiter = [':', ',']
 
 export function findNextPair (text: string, startIndex = 0): { startIndex: number, endIndex: number, key: string, value: string } {
   const result = {
@@ -88,12 +89,12 @@ export function findNextPair (text: string, startIndex = 0): { startIndex: numbe
     const char = text[i]
     if (!foundKey) {
       // looking for key
-      if (kKeyAllowedCharacters.includes(char)) result.key += char
+      if (kKeyAllowedCharacters.has(char)) result.key += char
       else if (char === kDelimiter[0]) foundKey = true
     } else {
       // looking for value
-      if (kStart.includes(char)) nested++
-      if (kEnd.includes(char)) nested--
+      if (kStart.has(char)) nested++
+      if (kEnd.has(char)) nested--
       if (nested === 0 && char === kDelimiter[1]) {
         result.endIndex = i + 1
         break
