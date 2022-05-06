@@ -35,7 +35,7 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
 
   async findOneByLanguage (language: string, filter?: Filter<TSchema>, options?: FindOptions<TSchema>): Promise<{ isFallback: boolean, item: TSchema | null }> {
     this.logger.debug({ func: 'findOneByLanguage', meta: { language, filter, options } }, 'started')
-    filter = filter ?? {}
+    filter ??= {}
     let isFallback = false
     let item = await this.collection.findOne({ ...filter, language }, options)
     if (isEmpty(item)) {
@@ -48,7 +48,10 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
 
   async updateOneByLanguage (language: string, filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions): Promise<{ isFallback: boolean, item: TSchema | null }> {
     this.logger.debug({ func: 'updateOneByLanguage', meta: { language, filter, docs, options } }, 'started')
-    const { isFallback, item } = await this.findOneByLanguage(language, filter)
+    options ??= {}
+    // we need to share the session if this operation is inside a given session
+    const sharedOptions: any = 'session' in options ? { session: options.session } : {}
+    const { isFallback, item } = await this.findOneByLanguage(language, filter, sharedOptions)
     if (isEmpty(item)) return { isFallback, item: null }
 
     const commonDocs: Partial<TSchema> = {}
@@ -59,7 +62,7 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
     }
 
     // update common fields
-    await this.updateMany({ [this.slugField]: item[this.slugField] } as any, { $set: commonDocs })
+    await this.updateMany({ [this.slugField]: item[this.slugField] } as any, { $set: commonDocs }, sharedOptions)
 
     // insert when it is fallback, update when item exist
     if (isFallback) {
@@ -67,14 +70,14 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
       const o: any = retrieveUpdateQueryData(docs)
       o[this.slugField] = item[this.slugField]
       // insert if language is not exist
-      await this.insertOne(o)
+      await this.insertOne(o, sharedOptions)
     } else {
       // update if language is exist
-      await this.updateOne({ ...filter, language }, docs)
+      await this.updateOne({ ...filter, language }, docs, sharedOptions)
     }
 
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const result = await this.findOneByLanguage(language, { [this.slugField]: item[this.slugField] } as Filter<TSchema>)
+    const result = await this.findOneByLanguage(language, { [this.slugField]: item[this.slugField] } as Filter<TSchema>, sharedOptions)
     this.logger.debug({ func: 'updateOneByLanguage', meta: { language, filter, docs, options } }, 'ended')
     return result
   }
