@@ -27,6 +27,14 @@ interface Private<TSchema> {
   skipIndex: boolean
 }
 
+export interface SearchOptions {
+  search?: string | Record<string, unknown>
+  filter?: string | Record<string, unknown>
+  sort?: string
+  page?: number
+  pageSize?: number
+}
+
 export class Controller<TSchema extends Document = Document> extends EventEmitter {
   private [kPrivate]: Private<TSchema>
   autoRegExpSearch: boolean
@@ -87,23 +95,26 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     this.logger.debug({ func: 'Symbol("createIndex")', meta: { indexes: this[kPrivate].indexes } }, 'ended')
   }
 
-  async count (search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>): Promise<number> {
+  async count (options?: Pick<SearchOptions, 'search' | 'filter'>): Promise<number> {
+    options ??= {}
+    const { search, filter } = options
     this.logger.debug({ func: 'count', meta: { search, filter } }, 'started')
-    await this.emit('pre-count', search, filter)
-    const found = await this.search(search, filter)
+    await this.emit('pre-count', options)
+    const found = await this.search({ search, filter })
     const result = found.length
-    await this.emit('post-count', result, search, filter)
+    await this.emit('post-count', result, options)
     this.logger.debug({ func: 'count', meta: { search, filter } }, 'ended')
     return result
   }
 
-  async search<U = TSchema> (search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>, sort?: string, page?: number, pageSize?: number): Promise<U[]> {
-    this.logger.debug({ func: 'search', meta: { search, filter, sort, page, pageSize } }, 'started')
-    await this.emit('pre-search', search, filter, sort, page, pageSize)
-    const pipeline = this.computePipeline(search, filter, sort, page, pageSize).toArray()
+  async search<U = TSchema> (options?: SearchOptions): Promise<U[]> {
+    this.logger.debug({ func: 'search', meta: options }, 'started')
+    options ??= {}
+    await this.emit('pre-search', options)
+    const pipeline = this.computePipeline(options).toArray()
     const result = await this.collection.aggregate<U>(pipeline).toArray()
-    await this.emit('post-search', result, search, filter, sort, page, pageSize)
-    this.logger.debug({ func: 'search', meta: { search, filter, sort, page, pageSize } }, 'ended')
+    await this.emit('post-search', result, options)
+    this.logger.debug({ func: 'search', meta: options }, 'ended')
     return result
   }
 
@@ -277,8 +288,9 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
 
   // search is always pre-query
   // we filter first then reduce the area of aggregate
-  computePreQuery (search?: any, filter?: any, ..._args: any[]): AggregateBuilder {
-    this.logger.trace({ func: 'computePreQuery', meta: { search, filter, args: _args } }, 'started')
+  computePreQuery (options: SearchOptions): AggregateBuilder {
+    let { search, filter }: any = options
+    this.logger.trace({ func: 'computePreQuery', meta: { search, filter } }, 'started')
     const opt: MatchPipeline = {}
     const arr: any[] = []
     const builder = new AggregateBuilder()
@@ -308,14 +320,15 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
 
     if (arr.length > 0) opt.$and = arr
     builder.match(opt)
-    this.logger.trace({ func: 'computePreQuery', meta: { search, filter, args: _args } }, 'ended')
+    this.logger.trace({ func: 'computePreQuery', meta: { search, filter } }, 'ended')
     return builder
   }
 
   // search is always pre-query
   // we filter first then reduce the area of aggregate
-  computePostQuery (filter?: any, ..._args: any[]): AggregateBuilder | false {
-    this.logger.trace({ func: 'computePostQuery', meta: { filter, args: _args } }, 'started')
+  computePostQuery (options: SearchOptions): AggregateBuilder | false {
+    let { filter }: any = options
+    this.logger.trace({ func: 'computePostQuery', meta: { filter } }, 'started')
     const opt: MatchPipeline = {}
     const arr: any[] = []
     const builder = new AggregateBuilder()
@@ -337,7 +350,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     if (arr.length > 0) opt.$and = arr
     else return false
     builder.match(opt)
-    this.logger.trace({ func: 'computePostQuery', meta: { filter, args: _args } }, 'ended')
+    this.logger.trace({ func: 'computePostQuery', meta: { filter } }, 'ended')
     return builder
   }
 
@@ -377,17 +390,17 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     }
   }
 
-  computePipeline (search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>, sort?: string, page?: number, pageSize?: number): AggregateBuilder {
-    this.logger.trace({ func: 'computePipeline', meta: { search, filter, sort, page, pageSize } }, 'started')
-    const builder = this.computePreQuery(search, filter)
-    builder.concat(this.buildAggregateBuilder())
-    const s = this.computeSort(sort)
+  computePipeline (options: SearchOptions = {}): AggregateBuilder {
+    this.logger.trace({ func: 'computePipeline', meta: options }, 'started')
+    const builder = this.computePreQuery(options)
+    builder.concat(this.buildAggregateBuilder(options))
+    const s = this.computeSort(options?.sort)
     if (s !== false) builder.concat(s)
-    const p = this.computeOption(page, pageSize)
+    const p = this.computeOption(options?.page, options?.pageSize)
     if (p !== false) builder.concat(p)
-    const q = this.computePostQuery(filter)
+    const q = this.computePostQuery(options)
     if (q !== false) builder.concat(q)
-    this.logger.trace({ func: 'computePipeline', meta: { search, filter, sort, page, pageSize } }, 'ended')
+    this.logger.trace({ func: 'computePipeline', meta: options }, 'ended')
     return builder
   }
 
@@ -417,10 +430,10 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
 
 export interface Controller<TSchema extends Document = Document> extends EventEmitter {
   on (eventName: 'initialized', listener: () => void | Promise<void>): this
-  on (eventName: 'pre-count', listener: (search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>) => void | Promise<void>): this
-  on (eventName: 'post-count', listener: (result: number, search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>) => void | Promise<void>): this
-  on (eventName: 'pre-search', listener: (search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>, sort?: string, page?: number, pageSize?: number) => void | Promise<void>): this
-  on (eventName: 'post-search', listener: <U = TSchema>(result: U[], search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>, sort?: string, page?: number, pageSize?: number) => void | Promise<void>): this
+  on (eventName: 'pre-count', listener: (options: Pick<SearchOptions, 'search' | 'filter'>) => void | Promise<void>): this
+  on (eventName: 'post-count', listener: (result: number, options: Pick<SearchOptions, 'search' | 'filter'>) => void | Promise<void>): this
+  on (eventName: 'pre-search', listener: (options: SearchOptions) => void | Promise<void>): this
+  on (eventName: 'post-search', listener: <U = TSchema>(result: U[], options: SearchOptions) => void | Promise<void>): this
   on (eventName: 'pre-insert', listener: (docs: TSchema | TSchema[]) => void | Promise<void>): this
   on (eventName: 'pre-insert-one', listener: (docs: TSchema, options?: InsertOneOptions) => void | Promise<void>): this
   on (eventName: 'post-insert-one', listener: (result: TSchema | null, docs: TSchema, options?: InsertOneOptions) => void | Promise<void>): this

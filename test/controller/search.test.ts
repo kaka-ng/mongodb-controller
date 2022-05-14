@@ -10,7 +10,7 @@ t.test('search', async function (t) {
   const ctr = new Controller(collection, { logger: { level: 'silent' }, searchFields: ['foo'] })
   await ctr.insertMany([{ foo: 'bar' }, { foo: 'baz' }, { foo: 'foo' }])
 
-  let result = await ctr.search('bar')
+  let result = await ctr.search({ search: 'bar' })
   t.equal(result.length, 1)
   for (let i = 0; i < result.length; i++) {
     t.equal('id' in result[i], true)
@@ -19,7 +19,7 @@ t.test('search', async function (t) {
     t.equal('updatedAt' in result[i], true)
   }
 
-  result = await ctr.search(undefined, { $exist: { foo: true } })
+  result = await ctr.search({ filter: { $exist: { foo: true } } })
   t.equal(result.length, 3)
   for (let i = 0; i < result.length; i++) {
     t.equal('id' in result[i], true)
@@ -37,9 +37,9 @@ t.test('count', async function (t) {
   const ctr = new Controller(collection, { logger: { level: 'silent' }, searchFields: ['foo'] })
   await ctr.insertMany([{ foo: 'bar' }, { foo: 'baz' }, { foo: 'foo' }])
 
-  let result = await ctr.count('bar')
+  let result = await ctr.count({ search: 'bar' })
   t.equal(result, 1)
 
-  result = await ctr.count(undefined, { $exist: { foo: true } })
+  result = await ctr.count({ filter: { $exist: { foo: true } } })
   t.equal(result, 3)
 })

@@ -2,11 +2,15 @@ import AggregateBuilder from '@kakang/mongodb-aggregate-builder'
 import { isEmpty, isExist, isNull, isUndefined } from '@kakang/validator'
 import { Collection, Document, Filter, FindOptions, UpdateFilter, UpdateOptions } from 'mongodb'
 import { retrieveUpdateQueryData } from '../utils/query'
-import { Controller, ControllerOptions } from './default'
+import { Controller, ControllerOptions, SearchOptions } from './default'
 
 export interface MultiLanguageControllerOptions<TSchema extends Document = Document> extends Partial<ControllerOptions> {
   slugField: keyof TSchema
   commonFields?: Array<keyof TSchema>
+}
+
+export interface MultiLanguageSearchOptions extends SearchOptions {
+  language?: string
 }
 
 export class MultiLanguageController<TSchema extends Document = Document> extends Controller<TSchema> {
@@ -23,13 +27,14 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
     this.commonFields = options?.commonFields ?? []
   }
 
-  async search<U = TSchema> (search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>, sort?: string, page?: number, pageSize?: number, language?: string): Promise<U[]> {
-    this.logger.debug({ func: 'search', meta: { search, filter, sort, page, pageSize } }, 'started')
-    await this.emit('pre-search', search, filter, sort, page, pageSize)
-    const pipeline = this.computePipeline(search, filter, sort, page, pageSize, language).toArray()
+  async search<U = TSchema> (options?: MultiLanguageSearchOptions): Promise<U[]> {
+    this.logger.debug({ func: 'search', meta: options }, 'started')
+    options ??= {}
+    await this.emit('pre-search', options)
+    const pipeline = this.computePipeline(options).toArray()
     const result = await this.collection.aggregate<U>(pipeline).toArray()
-    await this.emit('post-search', result, search, filter, sort, page, pageSize)
-    this.logger.debug({ func: 'search', meta: { search, filter, sort, page, pageSize } }, 'ended')
+    await this.emit('post-search', result, options)
+    this.logger.debug({ func: 'search', meta: options }, 'ended')
     return result
   }
 
@@ -82,21 +87,7 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
     return result
   }
 
-  computePipeline (search?: string | Record<string, unknown>, filter?: string | Record<string, unknown>, sort?: string, page?: number, pageSize?: number, language?: string): AggregateBuilder {
-    this.logger.trace({ func: 'computePipeline', meta: { search, filter, sort, page, pageSize, language } }, 'started')
-    const builder = this.computePreQuery(search, filter)
-    builder.concat(this.buildAggregateBuilder(language))
-    const s = this.computeSort(sort)
-    if (s !== false) builder.concat(s)
-    const p = this.computeOption(page, pageSize)
-    if (p !== false) builder.concat(p)
-    const q = this.computePostQuery(filter)
-    if (q !== false) builder.concat(q)
-    this.logger.trace({ func: 'computePipeline', meta: { search, filter, sort, page, pageSize, language } }, 'ended')
-    return builder
-  }
-
-  buildAggregateBuilder (language?: string): AggregateBuilder {
+  buildAggregateBuilder (options: MultiLanguageSearchOptions): AggregateBuilder {
     const builder = new AggregateBuilder()
     // we group by common field after the first match filter
     builder.group({
@@ -112,7 +103,7 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
     // we find if the items have matched language
     builder.addFields({
       index: {
-        $indexOfArray: ['$items.language', language]
+        $indexOfArray: ['$items.language', options.language]
       }
     })
     // we use the first doc if language not match
