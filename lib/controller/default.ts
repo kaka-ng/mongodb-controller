@@ -2,7 +2,7 @@
 import EventEmitter from '@kakang/eventemitter'
 import AggregateBuilder, { MatchPipeline, SortPipeline } from '@kakang/mongodb-aggregate-builder'
 import { isEmpty, isExist, isObject, isString } from '@kakang/validator'
-import { BulkWriteOptions, Collection, CreateIndexesOptions, DeleteOptions, Document, Filter, FindOneAndDeleteOptions, FindOneAndUpdateOptions, FindOptions, IndexSpecification, InsertOneOptions, OptionalUnlessRequiredId, UpdateFilter, UpdateOptions } from 'mongodb'
+import { AggregateOptions, BulkWriteOptions, Collection, CreateIndexesOptions, DeleteOptions, Document, Filter, FindOneAndDeleteOptions, FindOneAndUpdateOptions, FindOptions, IndexSpecification, InsertOneOptions, OptionalUnlessRequiredId, UpdateFilter, UpdateOptions } from 'mongodb'
 import { P } from 'pino'
 import { kCreateIndex, kPrivate } from '../symbols'
 import { appendBasicSchema, appendUpdateSchema } from '../utils/append'
@@ -95,24 +95,24 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     this.logger.debug({ func: 'Symbol("createIndex")', meta: { indexes: this[kPrivate].indexes } }, 'ended')
   }
 
-  async count (options?: Pick<SearchOptions, 'search' | 'filter'>): Promise<number> {
+  async count (options?: Pick<SearchOptions, 'search' | 'filter'>, o?: AggregateOptions): Promise<number> {
     options ??= {}
     const { search, filter } = options
     this.logger.debug({ func: 'count', meta: { search, filter } }, 'started')
     await this.emit('pre-count', options)
-    const found = await this.search({ search, filter })
+    const found = await this.search({ search, filter }, o)
     const result = found.length
     await this.emit('post-count', result, options)
     this.logger.debug({ func: 'count', meta: { search, filter } }, 'ended')
     return result
   }
 
-  async search<U = TSchema> (options?: SearchOptions): Promise<U[]> {
+  async search<U = TSchema> (options?: SearchOptions, o?: AggregateOptions): Promise<U[]> {
     this.logger.debug({ func: 'search', meta: options }, 'started')
     options ??= {}
     await this.emit('pre-search', options)
     const pipeline = this.computePipeline(options).toArray()
-    const result = await this.collection.aggregate<U>(pipeline).toArray()
+    const result = await this.collection.aggregate<U>(pipeline, o).toArray()
     await this.emit('post-search', result, options)
     this.logger.debug({ func: 'search', meta: options }, 'ended')
     return result
@@ -404,7 +404,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     return builder
   }
 
-  buildAggregateBuilder (..._args: any[]): AggregateBuilder {
+  buildAggregateBuilder (_options: SearchOptions): AggregateBuilder {
     return new AggregateBuilder()
   }
 
