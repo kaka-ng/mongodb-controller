@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/method-signature-style */
 import AggregateBuilder from '@kakang/mongodb-aggregate-builder'
 import { isEmpty, isExist, isNull, isUndefined } from '@kakang/validator'
-import { Collection, Document, Filter, FindOptions, UpdateFilter, UpdateOptions } from 'mongodb'
+import { AggregateOptions, Collection, Document, Filter, FindOptions, UpdateFilter, UpdateOptions } from 'mongodb'
+import { computeSharedOption } from '../utils/option'
 import { retrieveUpdateQueryData } from '../utils/query'
 import { Controller, ControllerOptions, SearchOptions } from './default'
 
@@ -27,17 +29,6 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
     this.commonFields = options?.commonFields ?? []
   }
 
-  async search<U = TSchema> (options?: MultiLanguageSearchOptions): Promise<U[]> {
-    this.logger.debug({ func: 'search', meta: options }, 'started')
-    options ??= {}
-    await this.emit('pre-search', options)
-    const pipeline = this.computePipeline(options).toArray()
-    const result = await this.collection.aggregate<U>(pipeline).toArray()
-    await this.emit('post-search', result, options)
-    this.logger.debug({ func: 'search', meta: options }, 'ended')
-    return result
-  }
-
   async findOneByLanguage (language: string, filter?: Filter<TSchema>, options?: FindOptions<TSchema>): Promise<{ isFallback: boolean, item: TSchema | null }> {
     this.logger.debug({ func: 'findOneByLanguage', meta: { language, filter, options } }, 'started')
     filter ??= {}
@@ -54,8 +45,7 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
   async updateOneByLanguage (language: string, filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions): Promise<{ isFallback: boolean, item: TSchema | null }> {
     this.logger.debug({ func: 'updateOneByLanguage', meta: { language, filter, docs, options } }, 'started')
     options ??= {}
-    // we need to share the session if this operation is inside a given session
-    const sharedOptions: any = 'session' in options ? { session: options.session } : {}
+    const sharedOptions = computeSharedOption(options)
     const { isFallback, item } = await this.findOneByLanguage(language, filter, sharedOptions)
     if (isEmpty(item)) return { isFallback, item: null }
 
@@ -118,4 +108,8 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
     })
     return builder
   }
+}
+
+export interface MultiLanguageController<TSchema extends Document = Document> extends Controller<TSchema> {
+  search<U = TSchema> (options?: MultiLanguageSearchOptions, o?: AggregateOptions): Promise<U[]>
 }
