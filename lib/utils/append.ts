@@ -1,11 +1,11 @@
 import { isArray } from '@kakang/validator'
+import { randomUUID } from 'crypto'
 import { Document, UpdateFilter } from 'mongodb'
-import * as uuid from 'uuid'
 import { isUpdateQuery } from './query'
 
 function _appendBasicSchema<TScheme extends Document = Document> (docs: TScheme, now: Date): TScheme {
   return Object.assign({}, docs, {
-    id: uuid.v4(),
+    id: randomUUID(),
     createdAt: now,
     updatedAt: now
   })
