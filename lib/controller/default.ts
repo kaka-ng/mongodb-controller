@@ -92,7 +92,12 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
       this.collection.createIndex(index.indexSpec, index.options ?? {}, noop)
       this.logger.trace({ func: 'Symbol("createIndex")', meta: { index } }, 'index %j is created', index.indexSpec)
     }
+    this.createIndex().finally(noop)
     this.logger.debug({ func: 'Symbol("createIndex")', meta: { indexes: this[kPrivate].indexes } }, 'ended')
+  }
+
+  async createIndex (): Promise<void> {
+
   }
 
   async count (options?: Pick<SearchOptions, 'search' | 'filter'>, o?: AggregateOptions): Promise<number> {
