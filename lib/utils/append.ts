@@ -1,35 +1,42 @@
 import { isArray } from '@kakang/validator'
 import { randomUUID } from 'crypto'
 import { Document, UpdateFilter } from 'mongodb'
-import { isUpdateQuery } from './query'
+import { isUpdateQuery, retrieveUpdateQueryData } from './query'
 
-function _appendBasicSchema<TScheme extends Document = Document> (docs: TScheme, now: Date): TScheme {
-  return Object.assign({}, docs, {
-    id: randomUUID(),
-    createdAt: now,
-    updatedAt: now
-  })
+function _appendBasicSchema<TSchema extends Document = Document> (docs: TSchema, now: Date): TSchema {
+  // we shallow clone
+  const doc: any = { ...docs }
+  doc.id = randomUUID()
+  doc.createdAt = now
+  doc.updatedAt = now
+  return doc
 }
 
-export function appendBasicSchema<TScheme extends Document = Document> (docs: TScheme): TScheme
-export function appendBasicSchema<TScheme extends Document = Document> (docs: TScheme[]): TScheme[]
-export function appendBasicSchema<TScheme extends Document = Document> (docs: TScheme | TScheme[]): TScheme | TScheme[] {
+function _noopAppendBasicSchema<TSchema extends Document = Document> (docs: TSchema): TSchema {
+  return docs
+}
+
+export type AppendBasicSchema<TSchema extends Document = Document> = (docs: TSchema, now: Date) => TSchema
+
+export function appendBasicSchema<TSchema extends Document = Document> (docs: TSchema, append?: AppendBasicSchema<TSchema>): TSchema
+export function appendBasicSchema<TSchema extends Document = Document> (docs: TSchema[], append?: AppendBasicSchema<TSchema>): TSchema[]
+export function appendBasicSchema<TSchema extends Document = Document> (docs: TSchema | TSchema[], append: AppendBasicSchema<TSchema> = _noopAppendBasicSchema): TSchema | TSchema[] {
   const now = new Date()
   if (isArray(docs)) {
     return docs.map(function (d) {
-      return _appendBasicSchema(d, now)
+      return append(_appendBasicSchema(d, now), now)
     })
   } else {
-    return _appendBasicSchema(docs, now)
+    return append(_appendBasicSchema(docs, now), now)
   }
 }
 
-export function appendUpdateSchema<TSchema extends Document = Document> (docs: UpdateFilter<TSchema>): UpdateFilter<TSchema>
-export function appendUpdateSchema<TSchema extends Document = Document> (docs: Partial<TSchema>): TSchema
-export function appendUpdateSchema<TSchema extends Document = Document> (docs: UpdateFilter<TSchema> | Partial<TSchema>): UpdateFilter<TSchema> | TSchema {
+export function appendUpdateSchema<TSchema extends Document = Document> (docs: UpdateFilter<TSchema>, append?: AppendBasicSchema<TSchema>): UpdateFilter<TSchema>
+export function appendUpdateSchema<TSchema extends Document = Document> (docs: Partial<TSchema>, append?: AppendBasicSchema<TSchema>): TSchema
+export function appendUpdateSchema<TSchema extends Document = Document> (docs: UpdateFilter<TSchema> | Partial<TSchema>, append: AppendBasicSchema<TSchema> = _noopAppendBasicSchema): UpdateFilter<TSchema> | TSchema {
   const now = new Date()
-  const o = isUpdateQuery(docs) ? docs.$set : docs
-  const item: any = _appendBasicSchema(o as TSchema, now)
+  const doc = retrieveUpdateQueryData(docs)
+  const item: any = append(_appendBasicSchema(doc, now), now)
   delete item.id
   delete item.createdAt
   if (isUpdateQuery(docs)) {

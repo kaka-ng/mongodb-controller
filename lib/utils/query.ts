@@ -14,14 +14,15 @@ export function retrieveUpdateQueryData<TSchema extends Document = Document> (do
   return isUpdateQuery(docs) ? Object.assign({}, docs.$set) as TSchema : docs as TSchema
 }
 
+export function normalizeQueryDate<TSchema extends Document = Document> (docs: UpdateFilter<TSchema> | Partial<TSchema>): UpdateFilter<TSchema> {
+  return isUpdateQuery(docs) ? docs : { $set: docs }
+}
+
 export function mergeUpdateQueryData<TSchema extends Document = Document> (from: UpdateFilter<TSchema> | Partial<TSchema>, to: UpdateFilter<TSchema> | Partial<TSchema>): UpdateFilter<TSchema> | Partial<TSchema> {
-  const fromD = retrieveUpdateQueryData(from)
-  const toD = retrieveUpdateQueryData(to)
-  const data = Object.assign({}, fromD, toD)
-  let result = {}
-  if (isUpdateQuery(from)) result = { ...result, ...from }
-  if (isUpdateQuery(to)) result = { ...result, ...to }
-  return { ...result, $set: data }
+  from = normalizeQueryDate(from)
+  to = normalizeQueryDate(to)
+  const data = Object.assign({}, from.$set, to.$set)
+  return { ...from, ...to, $set: data }
 }
 
 export function normalize (text: any): unknown {
@@ -54,15 +55,15 @@ export function normalize (text: any): unknown {
   //    we normalize each pair of key-value
   if (!isNumber(text) && !isString(text) && !isArray(text) && isJSON(text)) {
     const o = JSON.parse(tmp)
-    Object.entries(o).forEach(function ([k, v]) {
+    for (const k of Object.keys(o)) {
       // keep $expr $dateFromString work as before
       // $regex must be string
       if (k === 'dateString' || k === '$regex') {
-        o[k] = String(v)
+        o[k] = String(o[k])
       } else {
-        o[k] = normalize(v as string)
+        o[k] = normalize(o[k])
       }
-    })
+    }
     return o
   }
   // 7. if all of the assumption not matcch

@@ -4,12 +4,17 @@ import AggregateBuilder, { MatchPipeline, SortPipeline } from '@kakang/mongodb-a
 import { isEmpty, isExist, isObject, isString } from '@kakang/validator'
 import { AggregateOptions, BulkWriteOptions, Collection, CreateIndexesOptions, DeleteOptions, Document, Filter, FindOneAndDeleteOptions, FindOneAndUpdateOptions, FindOptions, IndexSpecification, InsertOneOptions, OptionalUnlessRequiredId, UpdateFilter, UpdateOptions } from 'mongodb'
 import { P } from 'pino'
-import { kCreateIndex, kPrivate } from '../symbols'
+import { kCollection, kCreateIndex, kIndexes, kLogger, kSkipIndex } from '../symbols'
 import { appendBasicSchema, appendUpdateSchema } from '../utils/append'
 import { createLogger } from '../utils/logger'
 import { noop } from '../utils/noop'
 import { computeSharedOption } from '../utils/option'
-import { findNextPair, isUpdateQuery, normalize, transformRegExpSearch } from '../utils/query'
+import { findNextPair, normalize, normalizeQueryDate, transformRegExpSearch } from '../utils/query'
+
+export interface MongoDBIndex {
+  indexSpec: IndexSpecification
+  options?: CreateIndexesOptions
+}
 
 export interface ControllerOptions {
   logger: P.LoggerOptions | P.BaseLogger
@@ -17,14 +22,7 @@ export interface ControllerOptions {
   autoRegExpSearch: boolean
   searchFields: string[]
   postMatchKeywords: string[]
-  indexes: Array<{ indexSpec: IndexSpecification, options?: CreateIndexesOptions }>
-}
-
-interface Private<TSchema> {
-  collection: Collection<TSchema>
-  logger: P.BaseLogger
-  indexes: Array<{ indexSpec: IndexSpecification, options?: CreateIndexesOptions }>
-  skipIndex: boolean
+  indexes: MongoDBIndex[]
 }
 
 export interface SearchOptions {
@@ -36,7 +34,11 @@ export interface SearchOptions {
 }
 
 export class Controller<TSchema extends Document = Document> extends EventEmitter {
-  private [kPrivate]: Private<TSchema>
+  private [kCollection]: Collection<TSchema>
+  private [kLogger]: P.BaseLogger
+  private [kIndexes]: MongoDBIndex[]
+  private [kSkipIndex]: boolean
+
   autoRegExpSearch: boolean
   searchFields: string[]
   // used to check if we should append before aggregation
@@ -45,39 +47,38 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
   postMatchKeywords: string[]
 
   get collection (): Collection<TSchema> {
-    return this[kPrivate].collection
+    return this[kCollection]
   }
 
   set collection (collection: Collection<TSchema> | undefined) {
     if (isEmpty(collection)) throw new Error('collection expected to be an object, but recieved "' + typeof collection + '"')
-    this[kPrivate].collection = collection
+    this[kCollection] = collection
   }
 
   get collectionName (): string {
-    return this[kPrivate].collection.collectionName
+    return this.collection.collectionName
   }
 
   get logger (): P.BaseLogger {
-    return this[kPrivate].logger
+    return this[kLogger]
   }
 
   constructor (collection?: Collection<any>, options?: Partial<ControllerOptions>) {
     if (isEmpty(collection)) throw new Error('collection expected to be an object, but recieved "' + typeof collection + '"')
     super()
     // initialize private
-    this[kPrivate] = {
-      collection: null,
-      logger: null,
-      indexes: [{ indexSpec: { id: 1 }, options: { unique: true } }],
-      skipIndex: options?.skipIndex ?? false
-    } as any
+    this[kCollection] = null as any
     this.collection = collection
-    this[kPrivate].logger = createLogger(this.collectionName, options?.logger)
-    this[kPrivate].indexes.push(...(options?.indexes ?? []))
+    this[kLogger] = createLogger(this.collectionName, options?.logger)
+    this[kIndexes] = [{ indexSpec: { id: 1 }, options: { unique: true } }]
+    this[kIndexes].push(...(options?.indexes ?? []))
+    this[kSkipIndex] = options?.skipIndex ?? false
+
     this.autoRegExpSearch = options?.autoRegExpSearch ?? true
     this.searchFields = options?.searchFields ?? []
     this.postMatchKeywords = options?.postMatchKeywords ?? []
-    if (!this[kPrivate].skipIndex) this[kCreateIndex]()
+    if (!this[kSkipIndex]) this[kCreateIndex]()
+
     this.emit('initialized').finally(noop)
     this.logger.debug({ func: 'constructor', meta: { options } }, 'created')
   }
@@ -86,14 +87,14 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
    * Index
    */
   [kCreateIndex] (): void {
-    this.logger.debug({ func: 'Symbol("createIndex")', meta: { indexes: this[kPrivate].indexes } }, 'started')
+    this.logger.debug({ func: 'Symbol("createIndex")', meta: { indexes: this[kIndexes] } }, 'started')
     // we do not wait for index creation
-    for (const index of this[kPrivate].indexes) {
+    for (const index of this[kIndexes]) {
       this.collection.createIndex(index.indexSpec, index.options ?? {}, noop)
       this.logger.trace({ func: 'Symbol("createIndex")', meta: { index } }, 'index %j is created', index.indexSpec)
     }
     this.createIndex().finally(noop)
-    this.logger.debug({ func: 'Symbol("createIndex")', meta: { indexes: this[kPrivate].indexes } }, 'ended')
+    this.logger.debug({ func: 'Symbol("createIndex")', meta: { indexes: this[kIndexes] } }, 'ended')
   }
 
   async createIndex (): Promise<void> {
@@ -129,7 +130,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     const sharedOption = computeSharedOption(options)
     // single end-point for insert validation
     await this.emit('pre-insert', docs)
-    const doc = appendBasicSchema(docs)
+    const doc = appendBasicSchema(docs, this.appendBasicSchema)
     await this.emit('pre-insert-one', doc, options)
     await this.collection.insertOne(doc as OptionalUnlessRequiredId<TSchema>, options)
     const result = await this.collection.findOne<TSchema>({ id: doc.id }, sharedOption)
@@ -146,7 +147,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     const sharedOption = computeSharedOption(options)
     // single end-point for insert validation
     await this.emit('pre-insert', docs)
-    const doc = appendBasicSchema(docs)
+    const doc = appendBasicSchema(docs, this.appendBasicSchema)
     await this.emit('pre-insert-many', doc, options)
     await this.collection.insertMany(doc as Array<OptionalUnlessRequiredId<TSchema>>, options)
     const result = await this.collection.find<TSchema>({ id: { $in: doc.map((d) => d.id) } }, { ...sharedOption, sort: { createdAt: 1 } }).toArray()
@@ -196,9 +197,9 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     options.returnDocument ??= 'after'
     // single end-point for update validation
     await this.emit('pre-update', filter, docs)
-    const doc = appendUpdateSchema(docs)
+    const doc = appendUpdateSchema(docs, this.appendBasicSchema)
     await this.emit('pre-update-one', filter, doc, options)
-    const result = await this.collection.findOneAndUpdate(filter, isUpdateQuery(doc) ? doc : { $set: doc }, options)
+    const result = await this.collection.findOneAndUpdate(filter, normalizeQueryDate(doc), options)
     await this.emit('post-update-one', result.value, filter, doc, options)
     // single end-point for update, we do not allow to update result on this end-point
     await this.emit('post-update')
@@ -212,14 +213,10 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     const sharedOption = computeSharedOption(options)
     // single end-point for update validation
     await this.emit('pre-update', filter, docs)
-    const doc = appendUpdateSchema(docs)
+    const doc = appendUpdateSchema(docs, this.appendBasicSchema)
     await this.emit('pre-update-many', filter, doc, options)
     const o = await this.collection.find(filter, sharedOption).toArray()
-    if (isUpdateQuery(doc)) {
-      await this.collection.updateMany(filter, doc, options)
-    } else {
-      await this.collection.updateMany(filter, { $set: doc }, options)
-    }
+    await this.collection.updateMany(filter, normalizeQueryDate(doc), options)
     const result = await this.collection.find({ id: { $in: o.map((o) => o.id) } }, sharedOption).toArray()
     await this.emit('post-update-many', result, filter, doc, options)
     // single end-point for update, we do not allow to update result on this end-point
@@ -234,10 +231,10 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     options.returnDocument ??= 'after'
     // single end-point for update validation
     await this.emit('pre-update', { id }, docs)
-    const doc = appendUpdateSchema(docs)
+    const doc = appendUpdateSchema(docs, this.appendBasicSchema)
     await this.emit('pre-update-by-id', id, doc, options)
     const filter: Filter<TSchema> = { id } as unknown as Filter<TSchema>
-    const result = await this.collection.findOneAndUpdate(filter, isUpdateQuery(doc) ? doc : { $set: doc }, options)
+    const result = await this.collection.findOneAndUpdate(filter, normalizeQueryDate(doc), options)
     await this.emit('post-update-by-id', result.value, id, doc, options)
     // single end-point for update, we do not allow to update result on this end-point
     await this.emit('post-update')
@@ -289,6 +286,10 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     await this.emit('post-delete')
     this.logger.debug({ func: 'deleteById', meta: { id, options } }, 'ended')
     return result.value as TSchema
+  }
+
+  appendBasicSchema (docs: TSchema): TSchema {
+    return docs
   }
 
   // search is always pre-query
@@ -426,7 +427,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
         throw err
       }
     }
-    if (!this[kPrivate].skipIndex) await this[kCreateIndex]()
+    if (!this[kSkipIndex]) await this[kCreateIndex]()
     await this.emit('post-reset')
     this.logger.trace({ func: 'resetDatabase' }, 'ended')
     return true
