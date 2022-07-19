@@ -15,7 +15,7 @@ export function retrieveUpdateQueryData<TSchema extends Document = Document> (do
 }
 
 export function normalizeQueryDate<TSchema extends Document = Document> (docs: UpdateFilter<TSchema> | Partial<TSchema>): UpdateFilter<TSchema> {
-  return isUpdateQuery(docs) ? docs : { $set: docs }
+  return isUpdateQuery(docs) ? docs : { $set: docs } as any
 }
 
 export function mergeUpdateQueryData<TSchema extends Document = Document> (from: UpdateFilter<TSchema> | Partial<TSchema>, to: UpdateFilter<TSchema> | Partial<TSchema>): UpdateFilter<TSchema> | Partial<TSchema> {

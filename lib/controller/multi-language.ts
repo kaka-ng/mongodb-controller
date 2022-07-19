@@ -19,7 +19,7 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
   slugField: keyof TSchema
   commonFields: Array<keyof TSchema>
 
-  constructor (collection: Collection| undefined, options: MultiLanguageControllerOptions<TSchema>) {
+  constructor (collection: Collection | undefined, options: MultiLanguageControllerOptions<TSchema>) {
     // slug field must be an index
     // it can greatly increase the searching time
     options.indexes = options.indexes ?? []
@@ -57,7 +57,7 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
     }
 
     // update common fields
-    await this.updateMany({ [this.slugField]: item[this.slugField] } as any, { $set: commonDocs }, sharedOptions)
+    await this.updateMany({ [this.slugField]: item[this.slugField] } as any, { $set: commonDocs } as any, sharedOptions)
 
     // insert when it is fallback, update when item exist
     if (isFallback) {
