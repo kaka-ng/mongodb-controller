@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/method-signature-style */
 import AggregateBuilder from '@kakang/mongodb-aggregate-builder'
 import { isEmpty, isExist, isNull, isUndefined } from '@kakang/validator'
-import { AggregateOptions, Collection, Document, Filter, FindOptions, UpdateFilter, UpdateOptions } from 'mongodb'
+import { AggregateOptions, AnyBulkWriteOperation, BulkWriteOptions, Collection, Document, Filter, FindOptions, UpdateFilter } from 'mongodb'
 import { computeSharedOption } from '../utils/option'
 import { retrieveUpdateQueryData } from '../utils/query'
 import { Controller, ControllerOptions, SearchOptions } from './default'
@@ -42,7 +42,7 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
     return { isFallback, item }
   }
 
-  async updateOneByLanguage (language: string, filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions): Promise<{ isFallback: boolean, item: TSchema | null }> {
+  async updateOneByLanguage (language: string, filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: BulkWriteOptions): Promise<{ isFallback: boolean, item: TSchema | null }> {
     this.logger.debug({ func: 'updateOneByLanguage', meta: { language, filter, docs, options } }, 'started')
     options ??= {}
     const sharedOptions = computeSharedOption(options)
@@ -56,8 +56,10 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
       if (!isNull(d[field]) && !isUndefined(d[field])) { commonDocs[field] = d[field] }
     }
 
+    const operations: Array<AnyBulkWriteOperation<TSchema>> = []
+
     // update common fields
-    await this.updateMany({ [this.slugField]: item[this.slugField] } as any, { $set: commonDocs } as any, sharedOptions)
+    operations.push({ updateMany: { filter: { [this.slugField]: item[this.slugField] } as any, update: { $set: commonDocs as any } } })
 
     // insert when it is fallback, update when item exist
     if (isFallback) {
@@ -65,11 +67,14 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
       const o: any = retrieveUpdateQueryData(docs)
       o[this.slugField] = item[this.slugField]
       // insert if language is not exist
-      await this.insertOne(o, sharedOptions)
+      operations.push({ insertOne: { document: o } })
     } else {
       // update if language is exist
-      await this.updateOne({ ...filter, language }, docs, sharedOptions)
+      operations.push({ updateOne: { filter: { ...filter, language }, update: docs } })
     }
+
+    // perform all operations in once
+    await this.collection.bulkWrite(operations, options)
 
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const result = await this.findOneByLanguage(language, { [this.slugField]: item[this.slugField] } as Filter<TSchema>, sharedOptions)
