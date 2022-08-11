@@ -2,8 +2,9 @@
 import AggregateBuilder from '@kakang/mongodb-aggregate-builder'
 import { isEmpty, isExist, isNull, isUndefined } from '@kakang/validator'
 import { AggregateOptions, AnyBulkWriteOperation, BulkWriteOptions, Collection, Document, Filter, FindOptions, UpdateFilter } from 'mongodb'
+import { appendBasicSchema, appendUpdateSchema } from '../utils/append'
 import { computeSharedOption } from '../utils/option'
-import { retrieveUpdateQueryData } from '../utils/query'
+import { normalizeQueryDate, retrieveUpdateQueryData } from '../utils/query'
 import { Controller, ControllerOptions, SearchOptions } from './default'
 
 export interface MultiLanguageControllerOptions<TSchema extends Document = Document> extends Partial<ControllerOptions> {
@@ -63,14 +64,17 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
 
     // insert when it is fallback, update when item exist
     if (isFallback) {
+      // we append needed info for the document
+      const document: any = appendBasicSchema(retrieveUpdateQueryData(docs), this.appendBasicSchema)
       // ensure slug is exist
-      const o: any = retrieveUpdateQueryData(docs)
-      o[this.slugField] = item[this.slugField]
+      document[this.slugField] = item[this.slugField]
       // insert if language is not exist
-      operations.push({ insertOne: { document: o } })
+      operations.push({ insertOne: { document } })
     } else {
+      // ensure it is atomic operation
+      const doc: any = appendUpdateSchema(retrieveUpdateQueryData(docs), this.appendBasicSchema)
       // update if language is exist
-      operations.push({ updateOne: { filter: { ...filter, language }, update: docs } })
+      operations.push({ updateOne: { filter: { ...filter, language }, update: normalizeQueryDate(doc) } })
     }
 
     // perform all operations in once
