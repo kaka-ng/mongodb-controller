@@ -106,7 +106,9 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     const { search, filter } = options
     this.logger.debug({ func: 'count', meta: { search, filter } }, 'started')
     await this.emit('pre-count', options)
-    const builder = this.computePipeline(options)
+    const builder = this.computePreQuery(options)
+    const postQuery = this.computePostQuery(options)
+    if (postQuery !== false) builder.concat(postQuery)
     builder.count('count')
     const found = await this.collection.aggregate(builder.toArray(), o).toArray()
     const result = found.at(0)?.count ?? 0
