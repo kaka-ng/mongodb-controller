@@ -42,16 +42,19 @@ export function normalize (text: any): unknown {
   // 2. if the string equal to 'false'
   //    we treat it as false
   if (tmp.toLowerCase() === 'false') return false
-  // 3. if the string is number
+  // 3. if the string is empty
+  //    return early since !isNaN('') will be true
+  if (tmp === '') return ''
+  // 4. if the string is number
   //    we treat it as number
   if (!isNaN(tmp as never as number)) return Number(tmp)
-  // 4. if the string match ISO8601 standard
+  // 5. if the string match ISO8601 standard
   //    we treat it as Date
   if (D.isISO8601Date(tmp)) return new Date(tmp)
-  // 5. if the object match array
+  // 6. if the object match array
   //    we normalize each item inside
   if (isArray(text)) return text.map(normalize)
-  // 6. if the object is JSON
+  // 7. if the object is JSON
   //    we normalize each pair of key-value
   if (!isNumber(text) && !isString(text) && !isArray(text) && isJSON(text)) {
     const o = JSON.parse(tmp)
@@ -66,7 +69,7 @@ export function normalize (text: any): unknown {
     }
     return o
   }
-  // 7. if all of the assumption not matcch
+  // 8. if all of the assumption not matcch
   //    we return the raw
   return text
 }

@@ -121,7 +121,9 @@ const cases: Array<{
   { input: { $dateFromString: { dateString: '1970-01-01T00:00:00.000Z' } }, output: { $dateFromString: { dateString: '1970-01-01T00:00:00.000Z' } }, validator: 'same' },
   { input: '{"$dateFromString":{"dateString":"1970-01-01T00:00:00.000Z"}}', output: { $dateFromString: { dateString: '1970-01-01T00:00:00.000Z' } }, validator: 'same' },
   { input: { $expr: { $regex: 'foo' } }, output: { $expr: { $regex: 'foo' } }, validator: 'same' },
-  { input: '{"$expr":{"$regex":"foo"}}', output: { $expr: { $regex: 'foo' } }, validator: 'same' }
+  { input: '{"$expr":{"$regex":"foo"}}', output: { $expr: { $regex: 'foo' } }, validator: 'same' },
+  { input: { $eq: '' }, output: { $eq: '' }, validator: 'same' },
+  { input: '{"$eq":""}', output: { $eq: '' }, validator: 'same' }
 ]
 
 t.test('normalize', function (t) {
