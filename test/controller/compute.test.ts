@@ -4,13 +4,16 @@ import { Controller } from '../../lib/controller/default'
 import { build } from '../utils/factory'
 
 t.test('compute', async function (t) {
-  t.plan(24)
+  t.plan(25)
 
   const db = await build(t)
   const ctr = new Controller(db.collection('compute'), { logger: { level: 'silent' } })
 
   let query = ctr.computePipeline()
   t.same(query.toArray(), [{ $match: {} }])
+
+  query = ctr.computePipeline({ filter: 'foo:bar,skip,hello:world' })
+  t.same(query.toArray(), [{ $match: { $and: [{ foo: 'bar' }, { hello: 'world' }] } }])
 
   ctr.searchFields = ['id', 'foo', 'bar']
   ctr.autoRegExpSearch = false

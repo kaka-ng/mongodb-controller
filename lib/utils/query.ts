@@ -92,9 +92,18 @@ export function findNextPair (text: string, startIndex = 0): { startIndex: numbe
   for (let i = result.startIndex; i < text.length; i++) {
     const char = text[i]
     if (!foundKey) {
-      // looking for key
-      if (kKeyAllowedCharacters.has(char)) result.key += char
-      else if (char === kDelimiter[0]) foundKey = true
+      if (kKeyAllowedCharacters.has(char)) {
+        // looking for key
+        result.key += char
+      } else if (char === kDelimiter[0]) {
+        // if match : delimiter, look for value
+        foundKey = true
+      } else if (char === kDelimiter[1]) {
+        // if match , delimiter, the key-value pair is malformat
+        // skip and return
+        result.endIndex = i + 1
+        break
+      }
     } else {
       // looking for value
       if (kStart.has(char)) nested++

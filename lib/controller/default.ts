@@ -320,7 +320,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
         // when both value non-exist, it reach the end of loop
         if (key === '' && value === '') break
         // when value is non-exist, it is not a proper format
-        if (value === '') continue
+        if (value === '') { i = endIndex - 1; continue }
         let shouldAdd = true
         for (let j = 0; j < this.postMatchKeywords.length; j++) {
           if (!shouldAdd) break
@@ -352,7 +352,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
         // when both value non-exist, it reach the end of loop
         if (key === '' && value === '') break
         // when value is non-exist, it is not a proper format
-        if (value === '') continue
+        if (value === '') { i = endIndex - 1; continue }
         let shouldAdd = false
         for (let j = 0; j < this.postMatchKeywords.length; j++) {
           if (shouldAdd) break
