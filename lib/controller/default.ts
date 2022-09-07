@@ -107,6 +107,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     this.logger.debug({ func: 'count', meta: { search, filter } }, 'started')
     await this.emit('pre-count', options)
     const builder = this.computePreQuery(options)
+    builder.concat(this.buildAggregateBuilder(options))
     const postQuery = this.computePostQuery(options)
     if (postQuery !== false) builder.concat(postQuery)
     builder.count('count')
