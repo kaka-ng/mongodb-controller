@@ -82,6 +82,15 @@ t.test('json pairs findNextPair', function (t) {
   t.equal(value, '{"foo":["123","456"],"bar":{"hello":"world}}')
 })
 
+t.test('characters supports findNextPair', function (t) {
+  t.plan(4)
+  const { startIndex, endIndex, key, value } = findNextPair('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.$:bar,')
+  t.equal(startIndex, 0)
+  t.equal(endIndex, 71)
+  t.equal(key, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.$')
+  t.equal(value, 'bar')
+})
+
 const cases: Array<{
   input: any
   output: any
