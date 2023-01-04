@@ -331,6 +331,16 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
         i = endIndex - 1
       }
     }
+    if (typeof filter === 'object') {
+      for (const key of Object.keys(filter)) {
+        let shouldAdd = true
+        for (let j = 0; j < this.postMatchKeywords.length; j++) {
+          if (!shouldAdd) break
+          if (key.includes(this.postMatchKeywords[j])) shouldAdd = false
+        }
+        if (shouldAdd) arr.push({ [key]: normalize(filter[key]) })
+      }
+    }
 
     if (arr.length > 0) opt.$and = arr
     builder.match(opt)
@@ -361,6 +371,16 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
         }
         if (shouldAdd) arr.push({ [key]: normalize(value) })
         i = endIndex - 1
+      }
+    }
+    if (typeof filter === 'object') {
+      for (const key of Object.keys(filter)) {
+        let shouldAdd = false
+        for (let j = 0; j < this.postMatchKeywords.length; j++) {
+          if (shouldAdd) break
+          if (key.includes(this.postMatchKeywords[j])) shouldAdd = true
+        }
+        if (shouldAdd) arr.push({ [key]: normalize(filter[key]) })
       }
     }
 

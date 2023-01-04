@@ -4,7 +4,7 @@ import { Controller } from '../../lib/controller/default'
 import { build } from '../utils/factory'
 
 t.test('compute', async function (t) {
-  t.plan(25)
+  t.plan(26)
 
   const db = await build(t)
   const ctr = new Controller(db.collection('compute'), { logger: { level: 'silent' } })
@@ -71,6 +71,11 @@ t.test('compute', async function (t) {
   ctr.autoRegExpSearch = false
   query = ctr.computePipeline({ filter: '$expr:{"$and":[{"$gte":["$createdAt",{"$dateFromString":{"dateString":"2021-01-01T00:00:00.000Z"}}]},{"$lte":["$createdAt",{"$dateFromString":{"dateString":"2021-01-01T00:00:00.000Z"}}]}]}' })
   t.same(query.toArray(), [{ $match: { $and: [{ $expr: { $and: [{ $gte: ['$createdAt', { $dateFromString: { dateString: '2021-01-01T00:00:00.000Z' } }] }, { $lte: ['$createdAt', { $dateFromString: { dateString: '2021-01-01T00:00:00.000Z' } }] }] } }] } }])
+
+  ctr.searchFields = []
+  ctr.autoRegExpSearch = false
+  query = ctr.computePipeline({ filter: { createdAt: { $gt: start, $lt: end } } })
+  t.same(query.toArray(), [{ $match: { $and: [{ createdAt: { $gt: start, $lt: end } }] } }])
 
   ctr.searchFields = ['id']
   ctr.autoRegExpSearch = true
