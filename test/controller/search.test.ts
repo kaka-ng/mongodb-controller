@@ -19,7 +19,7 @@ t.test('search', async function (t) {
     t.equal('updatedAt' in result[i], true)
   }
 
-  result = await ctr.search({ filter: { $exist: { foo: true } } })
+  result = await ctr.search({ filter: { foo: { $exist: true } } })
   t.equal(result.length, 3)
   for (let i = 0; i < result.length; i++) {
     t.equal('id' in result[i], true)
@@ -40,6 +40,6 @@ t.test('count', async function (t) {
   let result = await ctr.count({ search: 'bar' })
   t.equal(result, 1)
 
-  result = await ctr.count({ filter: { $exist: { foo: true } } })
+  result = await ctr.count({ filter: { foo: { $exist: true } } })
   t.equal(result, 3)
 })
