@@ -316,7 +316,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
         }
         if (shouldAdd) sub.push({ [field]: value })
       }
-      arr.push({ $or: sub })
+      if (sub.length > 0) arr.push({ $or: sub })
     }
 
     if (typeof filter === 'string') {
@@ -372,7 +372,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
         }
         if (shouldAdd) sub.push({ [field]: value })
       }
-      arr.push({ $or: sub })
+      if (sub.length > 0) arr.push({ $or: sub })
     }
 
     if (typeof filter === 'string') {
