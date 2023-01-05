@@ -297,7 +297,6 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     return docs
   }
 
-  // search is always pre-query
   // we filter first then reduce the area of aggregate
   computePreQuery (options: SearchOptions): AggregateBuilder {
     let { search, filter }: any = options
@@ -308,9 +307,15 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     if ((isString(search) || isObject(search)) && isExist(search) && (this.searchFields.length > 0)) {
       if (this.autoRegExpSearch) { search = transformRegExpSearch(search as any) }
       const sub: any[] = []
-      this.searchFields.forEach(function (field) {
-        sub.push({ [field]: normalize(search) })
-      })
+      const value = normalize(search)
+      for (const field of this.searchFields) {
+        let shouldAdd = true
+        for (let i = 0; i < this.postMatchKeywords.length; i++) {
+          if (!shouldAdd) break
+          if (field.includes(this.postMatchKeywords[i])) shouldAdd = false
+        }
+        if (shouldAdd) sub.push({ [field]: value })
+      }
       arr.push({ $or: sub })
     }
 
@@ -348,14 +353,28 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     return builder
   }
 
-  // search is always pre-query
   // we filter first then reduce the area of aggregate
   computePostQuery (options: SearchOptions): AggregateBuilder | false {
-    let { filter }: any = options
+    let { filter, search }: any = options
     this.logger.trace({ func: 'computePostQuery', meta: { filter } }, 'started')
     const opt: MatchPipeline = {}
     const arr: any[] = []
     const builder = new AggregateBuilder()
+    if ((isString(search) || isObject(search)) && isExist(search) && (this.searchFields.length > 0)) {
+      if (this.autoRegExpSearch) { search = transformRegExpSearch(search as any) }
+      const sub: any[] = []
+      const value = normalize(search)
+      for (const field of this.searchFields) {
+        let shouldAdd = false
+        for (let i = 0; i < this.postMatchKeywords.length; i++) {
+          if (shouldAdd) break
+          if (field.includes(this.postMatchKeywords[i])) shouldAdd = true
+        }
+        if (shouldAdd) sub.push({ [field]: value })
+      }
+      arr.push({ $or: sub })
+    }
+
     if (typeof filter === 'string') {
       if (!filter.endsWith(',')) filter += ','
       for (let i = 0; i <= filter.length; i++) {
@@ -431,12 +450,12 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     this.logger.trace({ func: 'computePipeline', meta: options }, 'started')
     const builder = this.computePreQuery(options)
     builder.concat(this.buildAggregateBuilder(options))
+    const q = this.computePostQuery(options)
+    if (q !== false) builder.concat(q)
     const s = this.computeSort(options?.sort)
     if (s !== false) builder.concat(s)
     const p = this.computeOption(options?.page, options?.pageSize)
     if (p !== false) builder.concat(p)
-    const q = this.computePostQuery(options)
-    if (q !== false) builder.concat(q)
     this.logger.trace({ func: 'computePipeline', meta: options }, 'ended')
     return builder
   }
