@@ -52,7 +52,7 @@
     "tap": "^16.3.0",
     "ts-node": "^10.9.1",
     "tsc-alias": "^1.8.1",
-    "typescript": "~4.7.4"
+    "typescript": "~4.9.5"
   },
   "dependencies": {
     "@kakang/eventemitter": "^0.1.1",
