@@ -1,6 +1,6 @@
 import { isArray } from '@kakang/validator'
 import { randomUUID } from 'crypto'
-import { Document, UpdateFilter } from 'mongodb'
+import { type Document, type UpdateFilter } from 'mongodb'
 import { isUpdateQuery, retrieveUpdateQueryData } from './query'
 
 function _appendBasicSchema<TSchema extends Document = Document> (docs: TSchema, now: Date): TSchema {

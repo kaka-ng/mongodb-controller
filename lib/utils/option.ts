@@ -1,4 +1,4 @@
-import { ClientSession } from 'mongodb'
+import { type ClientSession } from 'mongodb'
 
 export function computeSharedOption (option?: any): { session?: ClientSession } {
   option ??= {}

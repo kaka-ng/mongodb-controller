@@ -1,5 +1,5 @@
 import { Date as D, isArray, isJSON, isNull, isNumber, isObject, isString } from '@kakang/validator'
-import { Document, UpdateFilter } from 'mongodb'
+import { type Document, type UpdateFilter } from 'mongodb'
 
 const UpdateQueryKeys = new Set(['$currentDate', '$inc', '$min', '$max', '$mul', '$rename', '$set', '$setOnInsert', '$unset', '$addToSet', '$pop', '$pull', '$push', '$pushAll', '$bit'])
 

@@ -1,4 +1,4 @@
-import { Db, MongoClient } from 'mongodb'
+import { MongoClient, type Db } from 'mongodb'
 import { promisify } from 'util'
 import { createMongoDB } from './mongodb'
 const sleep = promisify(setTimeout)
@@ -7,7 +7,7 @@ export async function build (t: any): Promise<Db> {
   const o = await createMongoDB()
   process.env.MONGODB_URL = o.uri
   const connection = await MongoClient.connect(o.uri)
-  const db = await connection.db()
+  const db = connection.db()
 
   t.teardown(async function () {
     // we need to wait some time before exit

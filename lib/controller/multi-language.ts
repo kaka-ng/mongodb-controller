@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/method-signature-style */
 import AggregateBuilder from '@kakang/mongodb-aggregate-builder'
 import { isEmpty, isExist, isNull, isUndefined } from '@kakang/validator'
-import { AggregateOptions, AnyBulkWriteOperation, BulkWriteOptions, Collection, Document, Filter, FindOptions, UpdateFilter } from 'mongodb'
+import { type AggregateOptions, type AnyBulkWriteOperation, type BulkWriteOptions, type Collection, type Document, type Filter, type FindOptions, type UpdateFilter } from 'mongodb'
 import { appendBasicSchema, appendUpdateSchema } from '../utils/append'
 import { computeSharedOption } from '../utils/option'
 import { normalizeQueryDate, retrieveUpdateQueryData } from '../utils/query'
-import { Controller, ControllerOptions, SearchOptions } from './default'
+import { Controller, type ControllerOptions, type SearchOptions } from './default'
 
 export interface MultiLanguageControllerOptions<TSchema extends Document = Document> extends Partial<ControllerOptions> {
   slugField: keyof TSchema

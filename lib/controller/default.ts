@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/method-signature-style */
 import EventEmitter from '@kakang/eventemitter'
-import AggregateBuilder, { MatchPipeline, SortPipeline } from '@kakang/mongodb-aggregate-builder'
+import AggregateBuilder, { type MatchPipeline, type SortPipeline } from '@kakang/mongodb-aggregate-builder'
 import { isEmpty, isExist, isObject, isString } from '@kakang/validator'
-import { AggregateOptions, BulkWriteOptions, Collection, CreateIndexesOptions, DeleteOptions, Document, Filter, FindOneAndDeleteOptions, FindOneAndUpdateOptions, FindOptions, IndexSpecification, InsertOneOptions, OptionalUnlessRequiredId, UpdateFilter, UpdateOptions } from 'mongodb'
-import { P } from 'pino'
+import { type AggregateOptions, type BulkWriteOptions, type Collection, type CreateIndexesOptions, type DeleteOptions, type Document, type Filter, type FindOneAndDeleteOptions, type FindOneAndUpdateOptions, type FindOptions, type IndexSpecification, type InsertOneOptions, type OptionalUnlessRequiredId, type UpdateFilter, type UpdateOptions } from 'mongodb'
+import { type P } from 'pino'
 import { kCollection, kCreateIndex, kIndexes, kLogger, kSkipIndex } from '../symbols'
 import { appendBasicSchema, appendUpdateSchema } from '../utils/append'
 import { createLogger } from '../utils/logger'
@@ -90,7 +90,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     this.logger.debug({ func: 'Symbol("createIndex")', meta: { indexes: this[kIndexes] } }, 'started')
     // we do not wait for index creation
     for (const index of this[kIndexes]) {
-      this.collection.createIndex(index.indexSpec, index.options ?? {}, noop)
+      this.collection.createIndex(index.indexSpec, index.options ?? {}).catch(noop)
       this.logger.trace({ func: 'Symbol("createIndex")', meta: { index } }, 'index %j is created', index.indexSpec)
     }
     this.createIndex().finally(noop)
@@ -118,7 +118,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     return result
   }
 
-  async search<U = TSchema> (options?: SearchOptions, o?: AggregateOptions): Promise<U[]> {
+  async search<U extends Document = TSchema> (options?: SearchOptions, o?: AggregateOptions): Promise<U[]> {
     this.logger.debug({ func: 'search', meta: options }, 'started')
     options ??= {}
     await this.emit('pre-search', options)

@@ -1,5 +1,5 @@
 import { isArray, isNull, isObject } from '@kakang/validator'
-import Pino, { P } from 'pino'
+import Pino, { type P } from 'pino'
 
 function isPinoLogger (p?: any): p is P.BaseLogger {
   if (isObject(p) && !isArray(p) && !isNull(p)) {
