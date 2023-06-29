@@ -31,9 +31,15 @@ export function normalize (text: any): unknown {
   if (tmp.includes('$function') || tmp.includes('$accumulator')) throw new Error('invalid operator found')
 
   // start normalize
-  // 1. if the string is wrapped by '{' and '}'
+  // 1. if the string is wrapped by '{' and '}' or '[' and ']'
   //    we treat it as JSON
-  if (isString(text) && text.startsWith('{') && text.endsWith('}')) {
+  if (
+    isString(text) &&
+    (
+      (text.startsWith('{') && text.endsWith('}')) ||
+      (text.startsWith('[') && text.endsWith(']'))
+    )
+  ) {
     return normalize(JSON.parse(text))
   }
   // 2. if the string equal to 'true'

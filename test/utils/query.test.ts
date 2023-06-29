@@ -132,7 +132,9 @@ const cases: Array<{
   { input: { $expr: { $regex: 'foo' } }, output: { $expr: { $regex: 'foo' } }, validator: 'same' },
   { input: '{"$expr":{"$regex":"foo"}}', output: { $expr: { $regex: 'foo' } }, validator: 'same' },
   { input: { $eq: '' }, output: { $eq: '' }, validator: 'same' },
-  { input: '{"$eq":""}', output: { $eq: '' }, validator: 'same' }
+  { input: '{"$eq":""}', output: { $eq: '' }, validator: 'same' },
+  { input: { $or: [] }, output: { $or: [] }, validator: 'same' },
+  { input: '{"$or":[]', output: { $or: [] }, validator: 'same' }
 ]
 
 t.test('normalize', function (t) {
