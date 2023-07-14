@@ -134,7 +134,7 @@ const cases: Array<{
   { input: { $eq: '' }, output: { $eq: '' }, validator: 'same' },
   { input: '{"$eq":""}', output: { $eq: '' }, validator: 'same' },
   { input: { $or: [] }, output: { $or: [] }, validator: 'same' },
-  { input: '{"$or":[]', output: { $or: [] }, validator: 'same' }
+  { input: '{"$or":[]}', output: { $or: [] }, validator: 'same' }
 ]
 
 t.test('normalize', function (t) {
