@@ -1,4 +1,4 @@
-import AggregateBuild from '@kakang/mongodb-aggregate-builder'
+import type AggregateBuild from '@kakang/mongodb-aggregate-builder'
 import t from 'tap'
 import { Controller } from '../../lib/controller/default'
 import { build } from '../utils/factory'
@@ -79,7 +79,7 @@ t.test('compute', async function (t) {
 
   ctr.searchFields = ['id']
   ctr.autoRegExpSearch = true
-  // @ts-expect-error
+  // @ts-expect-error test invalid value
   query = ctr.computePipeline({ search: null })
   t.same(query.toArray(), [{ $match: {} }])
 

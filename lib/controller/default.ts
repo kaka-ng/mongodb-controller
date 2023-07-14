@@ -477,7 +477,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
         throw err
       }
     }
-    if (!this[kSkipIndex]) await this[kCreateIndex]()
+    if (!this[kSkipIndex]) this[kCreateIndex]()
     await this.emit('post-reset')
     this.logger.trace({ func: 'resetDatabase' }, 'ended')
     return true
