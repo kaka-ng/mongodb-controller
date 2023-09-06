@@ -205,11 +205,11 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     const doc = appendUpdateSchema(docs, this.appendBasicSchema)
     await this.emit('pre-update-one', filter, doc, options)
     const result = await this.collection.findOneAndUpdate(filter, normalizeQueryDate(doc), options)
-    await this.emit('post-update-one', result.value, filter, doc, options)
+    await this.emit('post-update-one', result, filter, doc, options)
     // single end-point for update, we do not allow to update result on this end-point
     await this.emit('post-update')
     this.logger.debug({ func: 'updateOne', meta: { filter, docs, options } }, 'ended')
-    return result.value as TSchema
+    return result as TSchema
   }
 
   async updateMany (filter: Filter<TSchema>, docs: UpdateFilter<TSchema> | Partial<TSchema>, options?: UpdateOptions): Promise<TSchema[]> {
@@ -240,11 +240,11 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     await this.emit('pre-update-by-id', id, doc, options)
     const filter: Filter<TSchema> = { id } as unknown as Filter<TSchema>
     const result = await this.collection.findOneAndUpdate(filter, normalizeQueryDate(doc), options)
-    await this.emit('post-update-by-id', result.value, id, doc, options)
+    await this.emit('post-update-by-id', result, id, doc, options)
     // single end-point for update, we do not allow to update result on this end-point
     await this.emit('post-update')
     this.logger.debug({ func: 'updateById', meta: { id, docs, options } }, 'ended')
-    return result.value as TSchema
+    return result as TSchema
   }
 
   async deleteOne (filter: Filter<TSchema>, options?: FindOneAndDeleteOptions): Promise<TSchema | null> {
@@ -254,11 +254,11 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     await this.emit('pre-delete', filter)
     await this.emit('pre-delete-one', filter, options)
     const result = await this.collection.findOneAndDelete(filter, options)
-    await this.emit('post-delete-one', result.value, filter, options)
+    await this.emit('post-delete-one', result, filter, options)
     // single end-point for delete, we do not allow to update result on this end-point
     await this.emit('post-delete')
     this.logger.debug({ func: 'deleteOne', meta: { filter, options } }, 'ended')
-    return result.value as TSchema
+    return result as TSchema
   }
 
   async deleteMany (filter?: Filter<TSchema>, options?: DeleteOptions): Promise<TSchema[]> {
@@ -286,11 +286,11 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     const filter: Filter<TSchema> = { id } as unknown as Filter<TSchema>
     await this.emit('pre-delete-by-id', id, options)
     const result = await this.collection.findOneAndDelete(filter, options)
-    await this.emit('post-delete-by-id', result.value, id, options)
+    await this.emit('post-delete-by-id', result, id, options)
     // single end-point for delete, we do not allow to update result on this end-point
     await this.emit('post-delete')
     this.logger.debug({ func: 'deleteById', meta: { id, options } }, 'ended')
-    return result.value as TSchema
+    return result as TSchema
   }
 
   appendBasicSchema (docs: TSchema): TSchema {
