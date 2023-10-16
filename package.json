@@ -58,6 +58,6 @@
     "@kakang/eventemitter": "^0.2.1",
     "@kakang/mongodb-aggregate-builder": "^0.2.2",
     "@kakang/validator": "^0.1.4",
-    "pino": "~8.15.0"
+    "pino": "~8.16.0"
   }
 }
