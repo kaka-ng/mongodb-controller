@@ -8,7 +8,7 @@ on:
 
 jobs:
   pnpm:
-    uses: climba03003/workflows/.github/workflows/ci-pnpm.yml@v2
+    uses: climba03003/workflows/.github/workflows/ci-pnpm.yml@v3
   
   yarn:
-    uses: climba03003/workflows/.github/workflows/ci-yarn.yml@v2
+    uses: climba03003/workflows/.github/workflows/ci-yarn.yml@v3
