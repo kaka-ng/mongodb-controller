@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/method-signature-style */
+import DeepMerge from '@fastify/deepmerge'
 import AggregateBuilder from '@kakang/mongodb-aggregate-builder'
 import { isEmpty, isExist, isNull, isUndefined } from '@kakang/validator'
 import { type AggregateOptions, type AnyBulkWriteOperation, type BulkWriteOptions, type Collection, type Document, type Filter, type FindOptions, type UpdateFilter } from 'mongodb'
@@ -6,6 +7,7 @@ import { appendBasicSchema, appendUpdateSchema } from '../utils/append'
 import { computeSharedOption } from '../utils/option'
 import { normalizeQueryDate, retrieveUpdateQueryData } from '../utils/query'
 import { Controller, type ControllerOptions, type SearchOptions } from './default'
+const deepmerge = DeepMerge()
 
 export interface MultiLanguageControllerOptions<TSchema extends Document = Document> extends Partial<ControllerOptions> {
   slugField: keyof TSchema
@@ -64,8 +66,10 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
 
     // insert when it is fallback, update when item exist
     if (isFallback) {
+      // we need to merge the old and new document to prevent missing fields
+      const doc: any = deepmerge(item, retrieveUpdateQueryData(docs))
       // we append needed info for the document
-      const document: any = appendBasicSchema(retrieveUpdateQueryData(docs), this.appendBasicSchema)
+      const document: any = appendBasicSchema(doc as TSchema, this.appendBasicSchema)
       // ensure slug is exist
       document[this.slugField] = item[this.slugField]
       // insert if language is not exist

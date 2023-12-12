@@ -55,6 +55,7 @@
     "typescript": "~5.3.3"
   },
   "dependencies": {
+    "@fastify/deepmerge": "^1.3.0",
     "@kakang/eventemitter": "^0.2.1",
     "@kakang/mongodb-aggregate-builder": "^0.2.2",
     "@kakang/validator": "^0.1.4",
