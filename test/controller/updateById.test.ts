@@ -10,7 +10,7 @@ t.test('updateById', async function (t) {
   const ctr = new Controller(collection, { logger: { level: 'silent' } })
   const inserted = await ctr.insertMany([{ foo: 'bar' }, { foo: 'bar' }, { foo: 'bar' }])
 
-  let result = await ctr.updateById(inserted[0].id, { foo: 'baz' })
+  let result = await ctr.updateById(inserted[0].id as string, { foo: 'baz' })
   t.ok(result)
   if (result !== null) {
     t.equal('id' in result, true)
@@ -21,7 +21,7 @@ t.test('updateById', async function (t) {
     t.equal('updatedAt' in result, true)
   }
 
-  result = await ctr.updateById(inserted[1].id, { $set: { foo: 'foo' } })
+  result = await ctr.updateById(inserted[1].id as string, { $set: { foo: 'foo' } })
   t.ok(result)
   if (result !== null) {
     t.equal('id' in result, true)

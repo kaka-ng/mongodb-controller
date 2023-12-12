@@ -10,7 +10,7 @@ t.test('deleteById', async function (t) {
   const ctr = new Controller(collection, { logger: { level: 'silent' } })
   const inserted = await ctr.insertMany([{ foo: 'bar' }, { foo: 'bar' }, { foo: 'bar' }])
 
-  const result = await ctr.deleteById(inserted[0].id)
+  const result = await ctr.deleteById(inserted[0].id as string)
   t.ok(result)
   if (result !== null) {
     t.equal('id' in result, true)

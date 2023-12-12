@@ -10,7 +10,7 @@ t.test('findById', async function (t) {
   const ctr = new Controller(collection, { logger: { level: 'silent' } })
   const inserted = await ctr.insertMany([{ foo: 'bar' }, { foo: 'bar' }, { foo: 'bar' }])
 
-  let result = await ctr.findById(inserted[0].id)
+  let result = await ctr.findById(inserted[0].id as string)
   t.ok(result)
   if (result !== null) {
     t.equal(result.id, inserted[0].id)

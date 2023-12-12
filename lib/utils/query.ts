@@ -64,7 +64,7 @@ export function normalize (text: any): unknown {
   //    we normalize each pair of key-value
   if (!isNumber(text) && !isString(text) && !isArray(text) && isJSON(text)) {
     const o = JSON.parse(tmp)
-    for (const k of Object.keys(o)) {
+    for (const k of Object.keys(o as Record<string, unknown>)) {
       // keep $expr $dateFromString work as before
       // $regex must be string
       if (k === 'dateString' || k === '$regex') {

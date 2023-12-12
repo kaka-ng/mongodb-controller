@@ -74,7 +74,7 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
       // ensure it is atomic operation
       const doc: any = appendUpdateSchema(retrieveUpdateQueryData(docs), this.appendBasicSchema)
       // update if language is exist
-      operations.push({ updateOne: { filter: { ...filter, language }, update: normalizeQueryDate(doc) } })
+      operations.push({ updateOne: { filter: { ...filter, language }, update: normalizeQueryDate(doc as UpdateFilter<TSchema>) } })
     }
 
     // perform all operations in once

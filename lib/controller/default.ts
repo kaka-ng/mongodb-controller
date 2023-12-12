@@ -79,7 +79,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     this.postMatchKeywords = options?.postMatchKeywords ?? []
     if (!this[kSkipIndex]) this[kCreateIndex]()
 
-    this.emit('initialized').finally(noop)
+    this.emit('initialized').catch(noop)
     this.logger.debug({ func: 'constructor', meta: { options } }, 'created')
   }
 
@@ -93,7 +93,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
       this.collection.createIndex(index.indexSpec, index.options ?? {}).catch(noop)
       this.logger.trace({ func: 'Symbol("createIndex")', meta: { index } }, 'index %j is created', index.indexSpec)
     }
-    this.createIndex().finally(noop)
+    this.createIndex().catch(noop)
     this.logger.debug({ func: 'Symbol("createIndex")', meta: { indexes: this[kIndexes] } }, 'ended')
   }
 
@@ -293,7 +293,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     return result as TSchema
   }
 
-  appendBasicSchema (docs: TSchema): TSchema {
+  appendBasicSchema = (docs: TSchema): TSchema => {
     return docs
   }
 
@@ -305,7 +305,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     const arr: any[] = []
     const builder = new AggregateBuilder()
     if ((isString(search) || isObject(search)) && isExist(search) && (this.searchFields.length > 0)) {
-      if (this.autoRegExpSearch) { search = transformRegExpSearch(search as any) }
+      if (this.autoRegExpSearch) { search = transformRegExpSearch(search as string) }
       const sub: any[] = []
       const value = normalize(search)
       for (const field of this.searchFields) {
@@ -337,7 +337,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
       }
     }
     if (typeof filter === 'object') {
-      for (const key of Object.keys(filter)) {
+      for (const key of Object.keys(filter as Record<string, any>)) {
         let shouldAdd = true
         for (let j = 0; j < this.postMatchKeywords.length; j++) {
           if (!shouldAdd) break
@@ -361,7 +361,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
     const arr: any[] = []
     const builder = new AggregateBuilder()
     if ((isString(search) || isObject(search)) && isExist(search) && (this.searchFields.length > 0)) {
-      if (this.autoRegExpSearch) { search = transformRegExpSearch(search as any) }
+      if (this.autoRegExpSearch) { search = transformRegExpSearch(search as string) }
       const sub: any[] = []
       const value = normalize(search)
       for (const field of this.searchFields) {
@@ -393,7 +393,7 @@ export class Controller<TSchema extends Document = Document> extends EventEmitte
       }
     }
     if (typeof filter === 'object') {
-      for (const key of Object.keys(filter)) {
+      for (const key of Object.keys(filter as Record<string, any>)) {
         let shouldAdd = false
         for (let j = 0; j < this.postMatchKeywords.length; j++) {
           if (shouldAdd) break
