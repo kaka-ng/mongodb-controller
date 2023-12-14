@@ -68,6 +68,8 @@ export class MultiLanguageController<TSchema extends Document = Document> extend
     if (isFallback) {
       // we need to merge the old and new document to prevent missing fields
       const doc: any = deepmerge(item, retrieveUpdateQueryData(docs))
+      // exclude _id index
+      delete doc._id
       // we append needed info for the document
       const document: any = appendBasicSchema(doc as TSchema, this.appendBasicSchema)
       // ensure slug is exist
