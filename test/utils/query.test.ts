@@ -134,7 +134,9 @@ const cases: Array<{
   { input: { $eq: '' }, output: { $eq: '' }, validator: 'same' },
   { input: '{"$eq":""}', output: { $eq: '' }, validator: 'same' },
   { input: { $or: [] }, output: { $or: [] }, validator: 'same' },
-  { input: '{"$or":[]}', output: { $or: [] }, validator: 'same' }
+  { input: '{"$or":[]}', output: { $or: [] }, validator: 'same' },
+  // Date
+  { input: new Date('1970-01-01T00:00:00.000Z'), output: Date, validator: 'equal', error: false, instanceOf: true }
 ]
 
 t.test('normalize', function (t) {
