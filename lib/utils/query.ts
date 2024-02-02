@@ -59,7 +59,7 @@ export function normalize (text: any): unknown {
   if (D.isISO8601Date(tmp)) return new Date(tmp)
   // 6. if the object match date instance
   //    we treat it as Date
-  if (D.isDate(tmp)) return tmp
+  if (D.isDate(text)) return text
   // 7. if the object match array
   //    we normalize each item inside
   if (isArray(text)) return text.map(normalize)
